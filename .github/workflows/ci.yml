@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24.22.1
           cache: npm
       - run: npm ci
       - name: Install GBDK-2020 (compiles the exported C code in the tests)
@@ -48,7 +48,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24.22.1
           cache: npm
       - run: npm ci
       - run: npm run build

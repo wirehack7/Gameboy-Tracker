@@ -21,7 +21,8 @@
  * - the About dialog shows version and links, its mini game runs, and its keys stay out of the tracker;
  * - German, Spanish and French browsers get their UI language, still without sideways scrolling;
  * - the manual page loads its sections, contents list and images on desktop and phone;
- * - the scope traces stay centred while playing (Chromium) and the piano keys keep their size at every octave.
+ * - the scope traces stay centred while playing (Chromium) and the piano keys keep their size at every octave;
+ * - the installed app (PWA): its manifest loads, and after one visit the tracker and the manual open offline (Chromium).
  *
  * Headless Firefox and WebKit on CI have no sound device and their audio clock may never run,
  * so the check that the play cursor moves through the rows runs in Chromium only.
@@ -600,6 +601,48 @@ for (const [locale, lang] of [['de-DE', 'de'], ['es-ES', 'es'], ['fr-FR', 'fr']]
       } finally {
         await context.close();
       }
+    }
+  });
+}
+
+// Playwright drives service workers fully only in Chromium.
+if (engine === 'chromium') {
+  await check('installed app (PWA) works offline after the first visit', async () => {
+    const { name, ...options } = desktop;
+    const context = await browser.newContext({ ...options, serviceWorkers: 'allow' });
+    context.setDefaultTimeout(15000);
+    try {
+      const page = await context.newPage();
+      const errors = [];
+      page.on('pageerror', (e) => errors.push(e.message));
+      await page.goto(base, { waitUntil: 'load' });
+      await page.waitForSelector('#pattern .prow');
+      const manifest = await page.evaluate(() => fetch(document.querySelector('link[rel=manifest]').href).then((r) => r.json()));
+      assert(manifest.display === 'standalone', `${name}: the manifest is not a standalone app`);
+      // The worker caches the whole build on install, then takes over the page.
+      await page.evaluate(async () => {
+        await navigator.serviceWorker.ready;
+        if (!navigator.serviceWorker.controller)
+          await new Promise((resolve) => navigator.serviceWorker.addEventListener('controllerchange', resolve));
+      });
+      const toast = await page.locator('#toast').textContent();
+      assert(/offline/i.test(toast ?? ''), `${name}: no toast that the app works offline (${toast})`);
+      await context.setOffline(true);
+      for (const [path, ready] of [
+        ['', '#pattern .prow'],
+        ['?from=home-screen', '#pattern .prow'],
+        ['manual.html', '.m-doc h2'],
+      ]) {
+        await page.goto(base + path, { waitUntil: 'load' });
+        await page.waitForSelector(ready);
+      }
+      const loaded = await page.evaluate(() =>
+        Promise.all([...document.querySelectorAll('.m-doc img')].map((img) => fetch(img.src).then((r) => r.ok, () => false))),
+      );
+      assert(loaded.length > 0 && loaded.every(Boolean), `${name}: manual images are not available offline`);
+      assert(errors.length === 0, `errors: ${errors.join(' | ')}`);
+    } finally {
+      await context.close();
     }
   });
 }

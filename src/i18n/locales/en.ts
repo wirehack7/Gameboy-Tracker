@@ -253,6 +253,8 @@ export const en = {
   'edit.redoTitle': "Redo (Ctrl+Y or Ctrl+Shift+Z)",
   'edit.undone': "Undone",
   'edit.redone': "Redone",
+  'pwa.updated': "A new version is ready: reload the page to use it",
+  'pwa.offline': "Saved for offline use: GB Tracker now also works without a connection",
   'edit.copied': "Copied {rows} rows × {channels} channels",
   'edit.cut': "Cut {rows} rows × {channels} channels",
   'help.key.undo': "Undo / redo",

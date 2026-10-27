@@ -24,6 +24,7 @@ What comes next is in the [roadmap](ROADMAP.md).
 - Responsive: desktop with side lists, tablet two-column, phone with views and an on-screen keypad
 - On-screen piano (mouse, touch, glissando) and Web MIDI input from any connected keyboard
 - Master volume for playback
+- Installable app (PWA): works offline after the first visit, on phones and desktop
 - Interface in English, German, Spanish and French (picked from the browser language, switchable in the toolbar)
 
 ## Exports

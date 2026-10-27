@@ -233,6 +233,8 @@ export const fr: Translation = {
   'edit.redoTitle': "Rétablir (Ctrl+Y ou Ctrl+Maj+Z)",
   'edit.undone': "Annulé",
   'edit.redone': "Rétabli",
+  'pwa.updated': "Une nouvelle version est prête : rechargez la page pour l’utiliser",
+  'pwa.offline': "Enregistré pour l’usage hors ligne : GB Tracker fonctionne désormais sans connexion",
   'edit.copied': "{rows} lignes × {channels} canaux copiées",
   'edit.cut': "{rows} lignes × {channels} canaux coupées",
   'help.key.undo': "Annuler / rétablir",

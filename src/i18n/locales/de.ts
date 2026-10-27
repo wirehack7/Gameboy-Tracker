@@ -252,6 +252,8 @@ export const de: Translation = {
   'edit.redoTitle': "Wiederholen (Strg+Y oder Strg+Umschalt+Z)",
   'edit.undone': "Rückgängig gemacht",
   'edit.redone': "Wiederholt",
+  'pwa.updated': "Eine neue Version ist bereit: Seite neu laden, um sie zu nutzen",
+  'pwa.offline': "Offline gespeichert: GB Tracker läuft jetzt auch ohne Verbindung",
   'edit.copied': "{rows} Zeilen × {channels} Kanäle kopiert",
   'edit.cut': "{rows} Zeilen × {channels} Kanäle ausgeschnitten",
   'help.key.undo': "Rückgängig / wiederholen",

@@ -1958,3 +1958,11 @@ function renderAll() {
 }
 
 renderAll();
+
+// The installed app (PWA): the service worker keeps the whole site for offline use.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  const sw = navigator.serviceWorker;
+  const firstInstall = !sw.controller;
+  sw.addEventListener('controllerchange', () => toast(t(firstInstall ? 'pwa.offline' : 'pwa.updated')));
+  addEventListener('load', () => sw.register('./sw.js').catch(() => {}));
+}

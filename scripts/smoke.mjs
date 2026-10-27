@@ -294,10 +294,12 @@ await check('scopes sit above their pattern columns on high-density phones', asy
             dpr: devicePixelRatio,
           };
         });
-      // The pixel fonts swap in once loaded and resize the header; measure after that.
+      // The pixel fonts swap in once loaded and resize the header; measure after that and after a redraw.
       await page.evaluate(async () => {
         await Promise.all(['20px VT323', '10px Silkscreen'].map((f) => document.fonts.load(f)));
         await document.fonts.ready;
+        // Headless WebKit runs animation frames rarely: let the scopes redraw at the new size first.
+        for (let i = 0; i < 2; i++) await new Promise((r) => requestAnimationFrame(r));
       });
       await page.waitForTimeout(300);
       const first = await layout();

@@ -294,6 +294,8 @@ await check('scopes sit above their pattern columns on high-density phones', asy
             dpr: devicePixelRatio,
           };
         });
+      // The pixel fonts swap in once loaded and resize the header; measure after that.
+      await page.evaluate(() => document.fonts.ready);
       await page.waitForTimeout(300);
       const first = await layout();
       await page.waitForTimeout(700);

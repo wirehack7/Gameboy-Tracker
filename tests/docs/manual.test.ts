@@ -1,12 +1,12 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { en } from '../../src/i18n/locales/en';
 import { renderManual, slug } from '../../src/manual/render';
 import { FX } from '../../src/tracker/player';
 
 const root = resolve(import.meta.dirname, '../..');
 const manual = readFileSync(resolve(root, 'docs/MANUAL.md'), 'utf8');
-const mainSource = readFileSync(resolve(root, 'src/main.ts'), 'utf8');
 
 /** Rows of the markdown table that follows `## <heading>` (first cells only). */
 function firstCells(heading: string): string[] {
@@ -32,22 +32,23 @@ describe('manual', () => {
     }
   });
 
+  const labels = (prefix: RegExp, exclude: RegExp = /Title$|title$|hint$|Hint$|confirm|Error$|Ready$|^export\.(rendering|size|loops)$/) =>
+    Object.entries(en)
+      .filter(([k]) => prefix.test(k) && !exclude.test(k))
+      .map(([, v]) => v);
+
   it('names every button of the FILE tab', () => {
-    const labels = [...mainSource.matchAll(/id="[fx]-[\w-]+">([^<]+)<\/button>/g)].map((m) => m[1].trim());
-    expect(labels.length).toBeGreaterThan(5);
-    for (const label of labels) expect(manual, label).toContain(label);
+    const buttons = labels(/^(file\.(new|open|save|demo)|export\.\w+)$/);
+    expect(buttons.length).toBeGreaterThan(8);
+    for (const label of buttons) expect(manual, label).toContain(label);
   });
 
   it('names every toolbar button', () => {
-    const labels = [...mainSource.matchAll(/class="pill-btn" id="[\w-]+" type="button"[^>]*>([^<]+)<\/button>/g)].map(
-      (m) => m[1],
-    );
-    expect(labels.length).toBeGreaterThan(1);
-    for (const label of labels) expect(manual, label).toContain(`**${label}**`);
+    for (const label of [en['piano.toggle'], 'MIDI']) expect(manual, label).toContain(`**${label}**`);
   });
 
   it('names every tab and mobile view', () => {
-    const tabs = [...mainSource.matchAll(/data-(?:tab|view)="\w+">([^<]+)<\/button>/g)].map((m) => m[1]);
+    const tabs = labels(/^(tab|nav)\.\w+$/, /^nav\.views$/);
     expect(tabs.length).toBeGreaterThan(5);
     for (const tab of tabs) expect(manual, tab).toContain(tab);
   });

@@ -67,6 +67,7 @@ Your work is saved in the browser automatically after every change.
 | KEYS | Shows or hides the on-screen piano under the pattern. |
 | MIDI | Turns MIDI input on or off. While on, it shows the number of connected inputs. |
 | VOL | Master volume of the browser playback (default 35). Exports are not affected. |
+| Language | Language of the interface: English, Deutsch, Español, Français. The first visit picks the browser's language; your choice is remembered. This manual is in English. |
 | Theme | Cycles between automatic (follows the system), light and dark. |
 
 **Left sidebar**

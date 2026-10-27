@@ -235,7 +235,8 @@ Tip: add the page to your home screen for a full-screen tracker without browser 
 
 - The piano starts at C of the current octave (**OCT**, `[` `]`) and shows as many octaves as fit the
   width of the window (up to 4). On touch screens the keys are wider, about 45 px, so a phone shows one octave
-  and a tablet about three.
+  and a tablet about three. Near the top of the note range the piano shows the highest octaves that fit, so
+  the keys keep their size whatever the octave.
 - With [record mode](#record-mode) on and the cursor on a **note column**, pressing a key enters the note and
   plays it, like a note key on the computer keyboard. On any other column, or with record mode off, the key only
   plays the note, so you can try out melodies without changing the pattern.
@@ -478,7 +479,8 @@ sound exactly like the target.
 - **■** stops. Pressing Space again also stops.
 - **Follow playback** (SONG tab) makes the pattern view follow the song. Switch it off to edit another part
   while the song plays.
-- **Scopes:** each channel header shows its waveform live.
+- **Scopes:** each channel header shows its waveform live, centred on the middle line like the Game Boy's
+  output (its capacitor removes the DC offset of the DACs).
 - **Mute:** **M** on a channel header mutes or unmutes the channel. Mute only affects playback in the tracker,
   not exports.
 - **VOL** in the toolbar sets the listening volume; it does not change the song or the exports.
@@ -665,6 +667,7 @@ format is simple enough to play from an assembly driver (for example in RGBDS) i
 These are planned and listed in the [roadmap](https://github.com/wirehack7/Gameboy-Tracker/blob/main/ROADMAP.md):
 
 - XM and MOD import
+- Sample playback (drum kits, voices) on the wave channel
 - Video export with scopes and scrolling patterns, more audio formats
 - Undo/redo, block copy and paste
 - Instrument macros (per-tick tables)

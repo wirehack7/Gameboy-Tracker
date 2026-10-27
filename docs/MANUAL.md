@@ -610,12 +610,8 @@ format is simple enough to play from an assembly driver (for example in RGBDS) i
 
 These are planned and listed in the [roadmap](https://github.com/wirehack7/Gameboy-Tracker/blob/main/ROADMAP.md):
 
-<<<<<<< HEAD
 - XM and MOD import
-=======
-- XM and MOD export and import
 - Sample playback (drum kits, voices) on the wave channel
->>>>>>> 53b260d (Import a waveform for the wave channel from an audio file)
 - Video export with scopes and scrolling patterns, more audio formats
 - Undo/redo, block copy and paste
 - Instrument macros (per-tick tables)

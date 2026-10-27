@@ -50,3 +50,4 @@ published to GitHub Pages automatically after merging. Finished items are ticked
 - [ ] PWA: works offline, installable on phones
 - [x] MIDI input
 - [x] On-screen piano (mouse and touch)
+- [x] Song library in the browser (save, open, rename, duplicate, delete, share instruments), import and ZIP backup

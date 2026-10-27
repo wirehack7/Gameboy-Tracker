@@ -1085,3 +1085,101 @@ a.btn {
     height: 20px;
   }
 }
+
+/* ------------------------------------------------------------ song library */
+
+.current-song {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.song-state {
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.song-state[data-state='unsaved'],
+.song-state[data-state='notInLibrary'] {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.tabs button.dirty::after {
+  content: ' •';
+}
+
+.lib-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 40vh;
+  overflow: auto;
+  border-radius: 6px;
+}
+
+.lib-row {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  border-radius: 4px;
+}
+
+.lib-row:nth-child(odd) {
+  background: var(--pat-beat);
+}
+
+.lib-row[aria-current='true'] {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.lib-open {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  border: 0;
+  background: transparent;
+  padding: 5px 8px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.lib-title {
+  font-size: 13px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lib-row[aria-current='true'] .lib-title {
+  color: var(--accent);
+}
+
+.lib-info {
+  font-size: 11px;
+  color: var(--ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lib-act {
+  flex: none;
+  min-width: 30px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.lib-act:hover,
+.lib-act:focus-visible {
+  background: var(--surface-2);
+  color: var(--ink);
+}

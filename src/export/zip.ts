@@ -76,3 +76,33 @@ export function zip(entries: ZipEntry[]): Uint8Array {
   v.setUint32(p + 16, centralStart, true);
   return out;
 }
+
+/**
+ * Reads the entries of a ZIP file written without compression, such as the ones `zip()` writes.
+ * Throws on compressed entries, which this tracker never writes.
+ */
+export function unzip(data: Uint8Array): ZipEntry[] {
+  const v = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  let end = data.length - 22;
+  while (end >= 0 && v.getUint32(end, true) !== 0x06054b50) end--;
+  if (end < 0) throw new Error('Not a ZIP file');
+  const count = v.getUint16(end + 10, true);
+  const dec = new TextDecoder();
+  const entries: ZipEntry[] = [];
+  let p = v.getUint32(end + 16, true);
+  for (let i = 0; i < count; i++) {
+    if (v.getUint32(p, true) !== 0x02014b50) throw new Error('Broken ZIP directory');
+    const method = v.getUint16(p + 10, true);
+    const size = v.getUint32(p + 20, true);
+    const nameLength = v.getUint16(p + 28, true);
+    const extraLength = v.getUint16(p + 30, true);
+    const commentLength = v.getUint16(p + 32, true);
+    const offset = v.getUint32(p + 42, true);
+    const name = dec.decode(data.subarray(p + 46, p + 46 + nameLength));
+    if (method !== 0) throw new Error(`${name} is compressed`);
+    const start = offset + 30 + v.getUint16(offset + 26, true) + v.getUint16(offset + 28, true);
+    entries.push({ name, data: data.slice(start, start + size) });
+    p += 46 + nameLength + extraLength + commentLength;
+  }
+  return entries;
+}

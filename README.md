@@ -17,7 +17,7 @@ What comes next is in the [roadmap](ROADMAP.md).
 - Effects: arpeggio, slides, portamento, vibrato, volume slide, delay, cut, panning, master volume, speed, jump/break
 - DMG or GBC mode per song
 - Oscilloscope per channel, click to mute
-- Save as JSON, automatic backup in the browser
+- Song library in the browser (save, open, rename, duplicate, delete), JSON import/export, ZIP backup of the library, automatic working-copy backup
 - Exports: playable Game Boy ROM (.gb/.gbc), GBS, XM, MOD, VGM, WAV, and a GBDK-2020 project (C array + tiny driver + Makefile)
 - Full-window tracker layout in Game Boy colours (off-white, A/B-button red) with colour-coded pattern columns, light and dark mode
 - Responsive: desktop with side lists, tablet two-column, phone with views and an on-screen keypad

@@ -158,12 +158,15 @@ export const en = {
   'export.vgm': 'Export VGM',
   'export.gbs': 'Export GBS',
   'export.rom': 'Game Boy ROM',
+  'export.xm': 'Export XM',
+  'export.mod': 'Export MOD',
   'export.gbdk': 'GBDK project (.zip)',
   'export.hint':
-    'ROM: runs on hardware and emulators (.gb, or .gbc for CGB songs). GBS and VGM play in music players. GBDK: C array of the register stream, a tiny C driver and a Makefile. More formats (XM, MOD, video) are on the roadmap.',
+    'ROM: runs on hardware and emulators (.gb, or .gbc for CGB songs). GBS and VGM play in music players. GBDK: C array of the register stream, a tiny C driver and a Makefile. XM and MOD open in other trackers (instruments become samples). Video is on the roadmap.',
   'export.rendering': 'Rendering… {seconds} s',
   'export.wavReady': 'WAV ready ({seconds} s).',
   'export.size': '{name}: {bytes} bytes.',
+  'export.approxHint': 'Approximated: {list}.',
   'export.gbdkReady': 'GBDK project ready: {bytes} bytes of song data.',
 
   // help panel

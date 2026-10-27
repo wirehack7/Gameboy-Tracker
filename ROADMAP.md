@@ -36,8 +36,8 @@ published to GitHub Pages automatically after merging. Finished items are ticked
 - [x] Playable ROM (.gb/.gbc) with built-in player and display
 
 ## Phase 5 – Tracker formats
-- [ ] XM export (samples from the channels, patterns and effects translated)
-- [ ] MOD export (ProTracker, 4 channels)
+- [x] XM export (samples from the channels, patterns and effects translated)
+- [x] MOD export (ProTracker, 4 channels)
 - [ ] XM/MOD import where it maps sensibly
 
 ## Phase 6 – Audio and video

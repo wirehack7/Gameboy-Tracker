@@ -1,59 +1,58 @@
 # GB Tracker
 
-Ein Tracker für Game-Boy-Musik, der im Browser läuft – am Desktop mit Tastatur und am Handy per Touch.
-Der Klang kommt aus einer zyklusgenauen Emulation der Game-Boy-APU (DMG und Game Boy Color), nicht aus
-nachgebauten Oszillatoren. Was der Tracker spielt, sind dieselben Registerzugriffe, die ein Sound-Treiber
-auf echter Hardware machen würde.
+A tracker for Game Boy music that runs in the browser — on desktop with a keyboard and on phones with touch.
+Sound comes from a cycle-accurate emulation of the Game Boy APU (DMG and Game Boy Color), not from imitation
+oscillators. What the tracker plays are the same register writes a sound driver makes on real hardware.
 
 **Live:** https://wirehack7.github.io/Gameboy-Tracker/
 
-Was als Nächstes kommt, steht in der [Roadmap](ROADMAP.md).
+What comes next is in the [roadmap](ROADMAP.md).
 
-## Funktionen
+## Features
 
-- 4 Kanäle wie auf der Hardware: 2 × Pulse (Kanal 1 mit Sweep), Wave, Noise
-- Pattern-Editor mit Order-Liste, 15 Instrumenten je Kanaltyp und 16 zeichenbaren Wellenformen
-- Effekte: Arpeggio, Slides, Portamento, Vibrato, Volume-Slide, Delay, Cut, Panning, Master-Volume, Speed, Sprung/Break
-- DMG- oder GBC-Modus pro Song
-- Oszilloskope je Kanal, Mute per Klick
-- Speichern als JSON, automatische Sicherung im Browser, WAV-Export
-- Game-Boy-Optik mit hellem und dunklem Modus
+- 4 channels as on the hardware: 2 × pulse (channel 1 with sweep), wave, noise
+- Pattern editor with order list, 15 instruments per channel type and 16 drawable waveforms
+- Effects: arpeggio, slides, portamento, vibrato, volume slide, delay, cut, panning, master volume, speed, jump/break
+- DMG or GBC mode per song
+- Oscilloscope per channel, click to mute
+- Save as JSON, automatic backup in the browser, WAV export
+- Game Boy look with light and dark mode
 
-## Entwicklung
+## Development
 
 ```sh
 npm install
-npm run dev     # Entwicklungsserver
-npm test        # Hardware- und Player-Tests
-npm run build   # Produktions-Build nach dist/
+npm run dev     # development server
+npm test        # hardware and player tests
+npm run build   # production build into dist/
 ```
 
-Jeder Push auf `main` wird getestet, gebaut und über GitHub Actions auf GitHub Pages veröffentlicht.
+Every push to `main` is tested, built and published to GitHub Pages by GitHub Actions.
 
-## Hardware-Abdeckung
+## Hardware coverage
 
-Die APU-Tests in `tests/apu/` prüfen das dokumentierte Verhalten der Original-Hardware
-(Pan Docs, gbdev-Wiki „Gameboy sound hardware“) und sind nach Blargg's `dmg_sound`-Test-ROMs gegliedert:
+The APU tests in `tests/apu/` check the documented behaviour of the original hardware (Pan Docs, gbdev wiki
+"Gameboy sound hardware") and are organised after Blargg's `dmg_sound` test ROMs:
 
-| Blargg-Test | Abgedeckt in |
+| Blargg test | Covered in |
 | --- | --- |
-| 01-registers | `registers.test.ts` (Lesemasken, Schreiben bei ausgeschalteter APU, Wave-RAM) |
+| 01-registers | `registers.test.ts` (read masks, writes while powered off, wave RAM) |
 | 02-len ctr | `length.test.ts` |
-| 03-trigger | `length.test.ts` (Extra-Length-Clock, Trigger lädt 63/255) |
+| 03-trigger | `length.test.ts` (extra length clock, trigger loads 63/255) |
 | 04-sweep | `sweep.test.ts` |
-| 05-sweep details | `sweep.test.ts` (Negate-Quirk) |
+| 05-sweep details | `sweep.test.ts` (negate quirk) |
 | 06-overflow on trigger | `sweep.test.ts` |
-| 07-len sweep period sync | `length.test.ts` (Frame Sequencer: Length 0/2/4/6, Sweep 2/6, Envelope 7) |
-| 08-len ctr during power | `length.test.ts` (DMG behält Länge, CGB löscht sie) |
+| 07-len sweep period sync | `length.test.ts` (frame sequencer: length 0/2/4/6, sweep 2/6, envelope 7) |
+| 08-len ctr during power | `length.test.ts` (DMG keeps lengths, CGB clears them) |
 | 09-wave read while on | `channels.test.ts` |
-| 10-wave trigger while on | `channels.test.ts` (DMG-Wave-RAM-Korruption) |
+| 10-wave trigger while on | `channels.test.ts` (DMG wave RAM corruption) |
 | 11-regs after power | `registers.test.ts` |
 | 12-wave write while on | `channels.test.ts` |
 
-Dazu kommen Duty-Muster, Envelope inklusive „Zombie Mode“, DACs, Noise-LFSR (15/7 Bit, Periodenlänge),
-Mixer (NR50/NR51), High-Pass-Filter, PCM12/PCM34 (nur CGB) und End-to-End-Tests, die die Tonhöhe des
-emulierten Ausgangs messen.
+On top of that: duty patterns, envelope including "zombie mode", DACs, noise LFSR (15/7 bit, period length),
+mixer (NR50/NR51), high-pass filter, PCM12/PCM34 (CGB only) and end-to-end tests that measure the pitch of the
+emulated output.
 
-Grenzen der Emulation: Sie arbeitet auf Taktebene der CPU (4,19 MHz). Effekte unterhalb eines Takts, etwa
-die exakte Position im 2-MHz-Raster des Wave-Kanals oder die revisionsabhängigen Unterschiede des Zombie
-Mode zwischen einzelnen DMG-Chips, sind angenähert.
+Limits of the emulation: it works at CPU clock resolution (4.19 MHz). Effects below one clock, such as the exact
+position in the wave channel's 2 MHz grid, or the revision-specific differences of zombie mode between individual
+DMG chips, are approximated.

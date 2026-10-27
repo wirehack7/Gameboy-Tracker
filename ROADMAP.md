@@ -1,51 +1,51 @@
 # Roadmap
 
-Web-basierter Game-Boy-Tracker für Desktop- und Mobil-Browser. Jede Phase landet als eigener Pull Request
-und wird nach dem Merge automatisch auf GitHub Pages veröffentlicht. Erledigte Punkte werden hier abgehakt.
+Web-based Game Boy tracker for desktop and mobile browsers. Each phase lands as its own pull request and is
+published to GitHub Pages automatically after merging. Finished items are ticked here.
 
-## Phase 1 – Fundament
-- [x] Projektgerüst (Vite + TypeScript, Vitest), CI für Tests und Build
-- [x] DMG-APU-Emulation, zyklusgenau und registerbasiert
-  - [x] Pulse 1 mit Sweep (inkl. Negate-Quirk, Overflow beim Trigger)
+## Phase 1 – Foundation
+- [x] Project setup (Vite + TypeScript, Vitest), CI for tests and build
+- [x] DMG APU emulation, cycle-accurate and register based
+  - [x] Pulse 1 with sweep (incl. negate quirk, overflow on trigger)
   - [x] Pulse 2
-  - [x] Wave-Kanal (Wave-RAM, Lautstärke-Shift, Zugriff während der Wiedergabe)
-  - [x] Noise-Kanal (15/7-Bit-LFSR, Teiler/Shift)
-  - [x] Frame Sequencer, Length Counter, Envelope, DACs, NR50/NR51/NR52, Power-Verhalten
-  - [x] Register-Lesemasken, High-Pass-Filter wie auf der Hardware
-- [x] Hardware-Tests nach dem Vorbild von Blargg `dmg_sound` (01–12) und Pan Docs
-- [x] Song-Modell (Patterns, Order-Liste, Instrumente, Wellenformen) und Player mit Effekten
-- [x] Pattern-Editor im Game-Boy-Look (Off-White, rote Knöpfe) mit Dark Mode
-- [x] Bedienung per Tastatur und Touch (Bildschirm-Keypad fürs Handy)
-- [x] Wiedergabe per AudioWorklet, Oszilloskope je Kanal
-- [x] Speichern/Laden (Browser-Speicher und JSON-Datei)
-- [x] WAV-Export
-- [x] Deployment auf GitHub Pages
+  - [x] Wave channel (wave RAM, volume shift, access while playing)
+  - [x] Noise channel (15/7-bit LFSR, divisor/shift)
+  - [x] Frame sequencer, length counters, envelopes, DACs, NR50/NR51/NR52, power behaviour
+  - [x] Register read masks, high-pass filter as on the hardware
+- [x] Hardware tests modelled on Blargg's `dmg_sound` (01–12) and Pan Docs
+- [x] Song model (patterns, order list, instruments, waveforms) and player with effects
+- [x] Pattern editor in Game Boy style (off-white, red buttons) with dark mode
+- [x] Keyboard and touch input (on-screen keypad for phones)
+- [x] Playback via AudioWorklet, oscilloscope per channel
+- [x] Save/load (browser storage and JSON file)
+- [x] WAV export
+- [x] Deployment to GitHub Pages
 
 ## Phase 2 – Game Boy Color
-- [x] CGB-Modus der APU (Unterschiede bei Length Counter/Power, Wave-RAM, PCM12/PCM34, Filter)
-- [ ] Tests für die CGB-Unterschiede (Vorbild Blargg `cgb_sound`, Grundlagen schon in Phase 1)
-- [x] Umschaltung DMG/CGB pro Song
+- [x] CGB mode of the APU (differences in length counters/power, wave RAM, PCM12/PCM34, filter)
+- [ ] Tests for the CGB differences modelled on Blargg's `cgb_sound` (basics already in phase 1)
+- [x] DMG/CGB switch per song
 
-## Phase 3 – Export für Entwickler
-- [ ] C-Arrays für GBDK (Register-Stream + kleiner Player in C)
-- [ ] Beispielprojekt für GBDK-2020, das den Export abspielt
-- [ ] VGM-Export (Game-Boy-Chip), nützlich für andere Tools
+## Phase 3 – Developer exports
+- [ ] C arrays for GBDK (register stream + small player in C)
+- [ ] Example GBDK-2020 project that plays the export
+- [ ] VGM export (Game Boy chip), useful for other tools
 
-## Phase 4 – Game-Boy-Formate
-- [ ] GBS-Export (Game Boy Sound System)
-- [ ] Spielbares ROM (.gb/.gbc) mit eingebautem Player und Anzeige
+## Phase 4 – Game Boy formats
+- [ ] GBS export (Game Boy Sound System)
+- [ ] Playable ROM (.gb/.gbc) with built-in player and display
 
-## Phase 5 – Tracker-Formate
-- [ ] XM-Export (Samples aus den Kanälen, Patterns und Effekte übersetzt)
-- [ ] MOD-Export (ProTracker, 4 Kanäle)
-- [ ] Import von XM/MOD, soweit sinnvoll abbildbar
+## Phase 5 – Tracker formats
+- [ ] XM export (samples from the channels, patterns and effects translated)
+- [ ] MOD export (ProTracker, 4 channels)
+- [ ] XM/MOD import where it maps sensibly
 
-## Phase 6 – Audio und Video
-- [ ] Weitere Audio-Formate (z. B. OGG/MP3 über den Browser, Einzelspuren pro Kanal)
-- [ ] Video-Export mit Oszilloskopen und laufenden Patterns (WebM über MediaRecorder/WebCodecs)
+## Phase 6 – Audio and video
+- [ ] More audio formats (e.g. OGG/MP3 via the browser, stems per channel)
+- [ ] Video export with oscilloscopes and scrolling patterns (WebM via MediaRecorder/WebCodecs)
 
-## Phase 7 – Komfort
-- [ ] Undo/Redo, Copy/Paste von Blöcken, Transponieren
-- [ ] Instrument-Makros (Tabellen für Duty/Volume/Pitch pro Tick)
-- [ ] PWA: offline nutzbar, auf dem Handy installierbar
-- [ ] MIDI-Eingabe
+## Phase 7 – Comfort
+- [ ] Undo/redo, copy/paste of blocks, transpose
+- [ ] Instrument macros (per-tick tables for duty/volume/pitch)
+- [ ] PWA: works offline, installable on phones
+- [ ] MIDI input

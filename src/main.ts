@@ -136,18 +136,18 @@ app.innerHTML = `
     <button class="icon-btn" id="theme" type="button"></button>
   </header>
   <div class="layout">
-    <section aria-label="Pattern-Editor">
+    <section aria-label="Pattern editor">
       <div class="bezel">
         <div class="bezel-top"><span class="stripe"></span>DOT MATRIX WITH STEREO SOUND<span class="stripe"></span></div>
         <div class="screen-row">
           <div class="battery"><span class="led" id="play-led"></span>PLAY</div>
           <div class="lcd">
             <div class="lcd-head">
-              <span class="nav">ORD <button type="button" id="ord-prev" aria-label="Vorherige Position">◀</button><span id="ord"></span><button type="button" id="ord-next" aria-label="Nächste Position">▶</button></span>
+              <span class="nav">ORD <button type="button" id="ord-prev" aria-label="Previous position">◀</button><span id="ord"></span><button type="button" id="ord-next" aria-label="Next position">▶</button></span>
               <span id="pat"></span>
-              <span class="nav">OCT <button type="button" id="oct-down" aria-label="Oktave runter">-</button><span id="oct"></span><button type="button" id="oct-up" aria-label="Oktave hoch">+</button></span>
-              <span class="nav">INS <button type="button" id="ins-down" aria-label="Instrument zurück">-</button><span id="ins"></span><button type="button" id="ins-up" aria-label="Instrument vor">+</button></span>
-              <span class="nav">STP <button type="button" id="stp" aria-label="Schrittweite"></button></span>
+              <span class="nav">OCT <button type="button" id="oct-down" aria-label="Octave down">-</button><span id="oct"></span><button type="button" id="oct-up" aria-label="Octave up">+</button></span>
+              <span class="nav">INS <button type="button" id="ins-down" aria-label="Previous instrument">-</button><span id="ins"></span><button type="button" id="ins-up" aria-label="Next instrument">+</button></span>
+              <span class="nav">STP <button type="button" id="stp" aria-label="Edit step"></button></span>
               <span id="model"></span>
             </div>
             <div class="scopes" id="scopes"></div>
@@ -158,19 +158,19 @@ app.innerHTML = `
       </div>
       <div class="controls">
         <div class="dpad" aria-label="Cursor">
-          <button class="up" type="button" data-move="up" aria-label="Hoch">▲</button>
-          <button class="left" type="button" data-move="left" aria-label="Links">◀</button>
+          <button class="up" type="button" data-move="up" aria-label="Up">▲</button>
+          <button class="left" type="button" data-move="left" aria-label="Left">◀</button>
           <span class="mid"></span>
-          <button class="right" type="button" data-move="right" aria-label="Rechts">▶</button>
-          <button class="down" type="button" data-move="down" aria-label="Runter">▼</button>
+          <button class="right" type="button" data-move="right" aria-label="Right">▶</button>
+          <button class="down" type="button" data-move="down" aria-label="Down">▼</button>
         </div>
         <div class="pills">
-          <div class="pill"><button type="button" id="btn-select" aria-label="Select: Pattern abspielen"></button>SELECT</div>
-          <div class="pill"><button type="button" id="btn-start" aria-label="Start: Song abspielen/stoppen"></button>START</div>
+          <div class="pill"><button type="button" id="btn-select" aria-label="Select: play pattern"></button>SELECT</div>
+          <div class="pill"><button type="button" id="btn-start" aria-label="Start: play/stop song"></button>START</div>
         </div>
         <div class="ab">
-          <div class="round"><button type="button" id="btn-b" aria-label="B: Feld löschen"></button>B</div>
-          <div class="round"><button type="button" id="btn-a" aria-label="A: letzte Note einfügen"></button>A</div>
+          <div class="round"><button type="button" id="btn-b" aria-label="B: clear field"></button>B</div>
+          <div class="round"><button type="button" id="btn-a" aria-label="A: insert last note"></button>A</div>
         </div>
       </div>
       <div class="keypad" id="keypad"></div>
@@ -180,8 +180,8 @@ app.innerHTML = `
         <button type="button" role="tab" data-tab="inst">INSTR</button>
         <button type="button" role="tab" data-tab="wave">WAVE</button>
         <button type="button" role="tab" data-tab="song">SONG</button>
-        <button type="button" role="tab" data-tab="file">DATEI</button>
-        <button type="button" role="tab" data-tab="help">HILFE</button>
+        <button type="button" role="tab" data-tab="file">FILE</button>
+        <button type="button" role="tab" data-tab="help">HELP</button>
       </div>
       <div class="panel" id="panel"></div>
     </aside>
@@ -497,7 +497,7 @@ function renderKeypad() {
     keypadEl.innerHTML = `
       <div class="row">${keys.slice(0, 8).join('')}</div>
       <div class="row">${keys.slice(8).join('')}</div>
-      <div class="row">${key('◀ FELD', 'action', 'data-act="prev"')}${key('FELD ▶', 'action', 'data-act="next"')}${key('DEL', 'red', 'data-act="del"')}</div>`;
+      <div class="row">${key('◀ FIELD', 'action', 'data-act="prev"')}${key('FIELD ▶', 'action', 'data-act="next"')}${key('DEL', 'red', 'data-act="del"')}</div>`;
   }
 }
 
@@ -572,7 +572,7 @@ $('btn-a').addEventListener('click', () => {
     if (FIELDS[cursor.field] !== 'note') cursor = { ...cursor, field: 0 };
     putNote(lastNote);
     setTimeout(() => release(cursor.ch), 250);
-  } else toast('Noch keine Note eingegeben');
+  } else toast('No note entered yet');
 });
 
 $('ord-prev').addEventListener('click', () => setOrder(order - 1));
@@ -606,7 +606,7 @@ const scopesEl = $('scopes');
 scopesEl.innerHTML = Array.from(
   { length: 4 },
   (_, i) =>
-    `<div class="scope" data-ch="${i}"><canvas></canvas><button type="button" aria-pressed="false" aria-label="Kanal ${i + 1} stumm">${i + 1}</button></div>`,
+    `<div class="scope" data-ch="${i}"><canvas></canvas><button type="button" aria-pressed="false" aria-label="Mute channel ${i + 1}">${i + 1}</button></div>`,
 ).join('');
 const scopeCanvases = [...scopesEl.querySelectorAll('canvas')];
 scopesEl.querySelectorAll<HTMLButtonElement>('button').forEach((b, i) =>
@@ -709,27 +709,27 @@ function renderInstrumentPanel() {
   let form = `<label for="i-name">Name</label><input type="text" id="i-name" value="${ins.name.replace(/"/g, '&quot;')}">`;
   if (instKind === 'pulse') {
     const p = song.pulseInstruments[instIndex];
-    form += `<label for="i-duty">Duty</label><select id="i-duty">${['12,5 %', '25 %', '50 %', '75 %'].map((d, i) => `<option value="${i}" ${p.duty === i ? 'selected' : ''}>${d}</option>`).join('')}</select>`;
-    form += slider('i-vol', 'Lautstärke', p.volume, 0, 15);
-    form += check('i-up', 'Envelope steigt', p.envUp);
-    form += slider('i-env', 'Envelope-Tempo', p.envPeriod, 0, 7);
-    form += slider('i-len', 'Länge (0 = aus)', p.length, 0, 64);
-    form += `<label></label><div class="hint">Sweep wirkt nur auf Kanal 1.</div>`;
-    form += slider('i-sp', 'Sweep-Tempo', p.sweepPeriod, 0, 7);
-    form += check('i-sn', 'Sweep abwärts', p.sweepNegate);
-    form += slider('i-ss', 'Sweep-Shift', p.sweepShift, 0, 7);
+    form += `<label for="i-duty">Duty</label><select id="i-duty">${['12.5 %', '25 %', '50 %', '75 %'].map((d, i) => `<option value="${i}" ${p.duty === i ? 'selected' : ''}>${d}</option>`).join('')}</select>`;
+    form += slider('i-vol', 'Volume', p.volume, 0, 15);
+    form += check('i-up', 'Envelope up', p.envUp);
+    form += slider('i-env', 'Envelope period', p.envPeriod, 0, 7);
+    form += slider('i-len', 'Length (0 = off)', p.length, 0, 64);
+    form += `<label></label><div class="hint">Sweep only affects channel 1.</div>`;
+    form += slider('i-sp', 'Sweep period', p.sweepPeriod, 0, 7);
+    form += check('i-sn', 'Sweep down', p.sweepNegate);
+    form += slider('i-ss', 'Sweep shift', p.sweepShift, 0, 7);
   } else if (instKind === 'wave') {
     const w = song.waveInstruments[instIndex];
-    form += slider('i-wave', 'Wellenform', w.wave, 0, WAVE_COUNT - 1);
-    form += `<label for="i-wvol">Lautstärke</label><select id="i-wvol">${['Stumm', '100 %', '50 %', '25 %'].map((d, i) => `<option value="${i}" ${w.volume === i ? 'selected' : ''}>${d}</option>`).join('')}</select>`;
-    form += slider('i-len', 'Länge (0 = aus)', w.length, 0, 256);
+    form += slider('i-wave', 'Waveform', w.wave, 0, WAVE_COUNT - 1);
+    form += `<label for="i-wvol">Volume</label><select id="i-wvol">${['Mute', '100 %', '50 %', '25 %'].map((d, i) => `<option value="${i}" ${w.volume === i ? 'selected' : ''}>${d}</option>`).join('')}</select>`;
+    form += slider('i-len', 'Length (0 = off)', w.length, 0, 256);
   } else {
     const n = song.noiseInstruments[instIndex];
-    form += slider('i-vol', 'Lautstärke', n.volume, 0, 15);
-    form += check('i-up', 'Envelope steigt', n.envUp);
-    form += slider('i-env', 'Envelope-Tempo', n.envPeriod, 0, 7);
-    form += slider('i-len', 'Länge (0 = aus)', n.length, 0, 64);
-    form += check('i-narrow', '7-Bit-Rauschen', n.narrow);
+    form += slider('i-vol', 'Volume', n.volume, 0, 15);
+    form += check('i-up', 'Envelope up', n.envUp);
+    form += slider('i-env', 'Envelope period', n.envPeriod, 0, 7);
+    form += slider('i-len', 'Length (0 = off)', n.length, 0, 64);
+    form += check('i-narrow', '7-bit noise', n.narrow);
   }
   panelEl.innerHTML = `
     <h2>INSTRUMENT</h2>
@@ -738,10 +738,10 @@ function renderInstrumentPanel() {
     <h2>${instKind.toUpperCase()} ${(instIndex + 1).toString(16).toUpperCase()}</h2>
     <div class="form">${form}</div>
     <div class="btn-row">
-      <button type="button" class="btn primary" id="i-test">▶ Testen</button>
-      <button type="button" class="btn" id="i-use">Zum Eingeben wählen</button>
+      <button type="button" class="btn primary" id="i-test">▶ Test</button>
+      <button type="button" class="btn" id="i-use">Use for note entry</button>
     </div>
-    <p class="hint">Instrumente gelten je Kanaltyp: Kanal 1 und 2 nutzen PULSE, Kanal 3 WAVE, Kanal 4 NOISE.</p>`;
+    <p class="hint">Instruments belong to a channel type: channels 1 and 2 use PULSE, channel 3 WAVE, channel 4 NOISE.</p>`;
 
   panelEl.querySelectorAll<HTMLButtonElement>('[data-kind]').forEach((b) =>
     b.addEventListener('click', () => {
@@ -801,21 +801,21 @@ function renderInstrumentPanel() {
   $('i-use').addEventListener('click', () => {
     instrument = instIndex;
     renderHeader();
-    toast(`Instrument ${(instIndex + 1).toString(16).toUpperCase()} gewählt`);
+    toast(`Instrument ${(instIndex + 1).toString(16).toUpperCase()} selected`);
   });
 }
 
 function renderWavePanel() {
   const presets = Object.keys(WAVE_PRESETS);
   panelEl.innerHTML = `
-    <h2>WELLENFORM</h2>
+    <h2>WAVEFORM</h2>
     <div class="inst-grid">${Array.from({ length: WAVE_COUNT }, (_, i) => `<button type="button" data-w="${i}" aria-pressed="${i === waveIndex}">${i.toString(16).toUpperCase()}</button>`).join('')}</div>
     <h2>WAVE ${waveIndex.toString(16).toUpperCase()} · 32 × 4 BIT</h2>
-    <canvas class="wave-canvas" id="wave-canvas" width="320" height="160" aria-label="Wellenform zeichnen"></canvas>
+    <canvas class="wave-canvas" id="wave-canvas" width="320" height="160" aria-label="Draw waveform"></canvas>
     <div class="btn-row">${presets.map((p) => `<button type="button" class="btn" data-preset="${p}">${p}</button>`).join('')}</div>
     <h2>HEX</h2>
-    <div class="form"><label for="w-hex">Daten</label><input type="text" id="w-hex" spellcheck="false" maxlength="32"></div>
-    <p class="hint">Mit Maus oder Finger zeichnen. Die Wellenform wird beim nächsten Notenanschlag geladen; wie auf der Hardware wird dafür der DAC kurz abgeschaltet.</p>`;
+    <div class="form"><label for="w-hex">Data</label><input type="text" id="w-hex" spellcheck="false" maxlength="32"></div>
+    <p class="hint">Draw with mouse or finger. The wave is loaded on the next note; as on the hardware, the DAC is switched off briefly to do so.</p>`;
   const wave = song.waves[waveIndex];
   const canvas = $<HTMLCanvasElement>('wave-canvas');
   const hexInput = $<HTMLInputElement>('w-hex');
@@ -850,7 +850,7 @@ function renderWavePanel() {
   hexInput.addEventListener('change', () => {
     const s = hexInput.value.replace(/[^0-9a-f]/gi, '');
     if (s.length !== 32) {
-      toast('Es werden genau 32 Hex-Ziffern gebraucht');
+      toast('Exactly 32 hex digits are required');
       draw();
       return;
     }
@@ -878,31 +878,31 @@ function renderSongPanel() {
   panelEl.innerHTML = `
     <h2>SONG</h2>
     <div class="form">
-      <label for="s-title">Titel</label><input type="text" id="s-title">
-      <label for="s-author">Autor</label><input type="text" id="s-author">
+      <label for="s-title">Title</label><input type="text" id="s-title">
+      <label for="s-author">Author</label><input type="text" id="s-author">
       <label>Hardware</label>
       <div class="seg" role="group"><button type="button" data-model="dmg" aria-pressed="${song.model === 'dmg'}">DMG</button><button type="button" data-model="cgb" aria-pressed="${song.model === 'cgb'}">GBC</button></div>
-      ${slider('s-speed', 'Speed (Ticks/Zeile)', song.speed, 1, 31)}
-      <label></label><div class="hint" id="s-bpm">≈ ${bpm.toFixed(1)} BPM bei 4 Zeilen pro Schlag</div>
+      ${slider('s-speed', 'Speed (ticks/row)', song.speed, 1, 31)}
+      <label></label><div class="hint" id="s-bpm">≈ ${bpm.toFixed(1)} BPM at 4 rows per beat</div>
     </div>
-    <h2>ORDER-LISTE</h2>
+    <h2>ORDER LIST</h2>
     <div class="order-list">${song.order.map((p, i) => `<button type="button" data-o="${i}" aria-current="${i === order}">${hex2(i)}:${hex2(p)}</button>`).join('')}</div>
     <div class="btn-row">
       <button type="button" class="btn" id="o-dec">Pattern −</button>
       <button type="button" class="btn" id="o-inc">Pattern +</button>
-      <button type="button" class="btn" id="o-ins">Position einfügen</button>
-      <button type="button" class="btn" id="o-del">Position löschen</button>
+      <button type="button" class="btn" id="o-ins">Insert position</button>
+      <button type="button" class="btn" id="o-del">Delete position</button>
     </div>
     <h2>PATTERN ${hex2(song.order[order])}</h2>
     <div class="btn-row" style="margin-top:0">
-      <button type="button" class="btn" id="p-new">Neues Pattern</button>
-      <button type="button" class="btn" id="p-clone">Duplizieren</button>
-      <button type="button" class="btn" id="p-clear">Leeren</button>
-      <button type="button" class="btn" id="p-up">Kanal +1 Halbton</button>
-      <button type="button" class="btn" id="p-down">Kanal −1 Halbton</button>
-      <button type="button" class="btn" id="p-delrow">Zeile entfernen</button>
+      <button type="button" class="btn" id="p-new">New pattern</button>
+      <button type="button" class="btn" id="p-clone">Duplicate</button>
+      <button type="button" class="btn" id="p-clear">Clear</button>
+      <button type="button" class="btn" id="p-up">Channel +1 semitone</button>
+      <button type="button" class="btn" id="p-down">Channel −1 semitone</button>
+      <button type="button" class="btn" id="p-delrow">Delete row</button>
     </div>
-    <div class="form" style="margin-top:10px">${check('s-follow', 'Wiedergabe folgen', follow)}</div>`;
+    <div class="form" style="margin-top:10px">${check('s-follow', 'Follow playback', follow)}</div>`;
   const title = $<HTMLInputElement>('s-title');
   const author = $<HTMLInputElement>('s-author');
   title.value = song.title;
@@ -923,7 +923,7 @@ function renderSongPanel() {
   );
   bindRange('s-speed', (v) => {
     song.speed = v;
-    $('s-bpm').textContent = `≈ ${((59.7275 * 60) / (v * 4)).toFixed(1)} BPM bei 4 Zeilen pro Schlag`;
+    $('s-bpm').textContent = `≈ ${((59.7275 * 60) / (v * 4)).toFixed(1)} BPM at 4 rows per beat`;
   });
   panelEl.querySelectorAll<HTMLButtonElement>('[data-o]').forEach((b) =>
     b.addEventListener('click', () => setOrder(Number(b.dataset.o))),
@@ -943,7 +943,7 @@ function renderSongPanel() {
     changed(true);
   });
   $('o-del').addEventListener('click', () => {
-    if (song.order.length <= 1) return toast('Die letzte Position bleibt erhalten');
+    if (song.order.length <= 1) return toast('The last position cannot be deleted');
     song.order.splice(order, 1);
     order = Math.min(order, song.order.length - 1);
     changed(true);
@@ -961,7 +961,7 @@ function renderSongPanel() {
     changed(true);
   });
   $('p-clear').addEventListener('click', () => {
-    if (!confirm('Pattern wirklich leeren?')) return;
+    if (!confirm('Really clear this pattern?')) return;
     song.patterns[song.order[order]] = emptyPattern(pattern().rows.length);
     changed(true);
   });
@@ -993,28 +993,28 @@ const fileBase = () => (song.title || 'song').replace(/[^\w-]+/g, '_');
 
 function renderFilePanel() {
   panelEl.innerHTML = `
-    <h2>DATEI</h2>
+    <h2>FILE</h2>
     <div class="btn-row" style="margin-top:0">
-      <button type="button" class="btn" id="f-new">Neu</button>
-      <button type="button" class="btn" id="f-open">Öffnen…</button>
-      <button type="button" class="btn primary" id="f-save">Speichern (.json)</button>
-      <button type="button" class="btn" id="f-demo">Demo laden</button>
+      <button type="button" class="btn" id="f-new">New</button>
+      <button type="button" class="btn" id="f-open">Open…</button>
+      <button type="button" class="btn primary" id="f-save">Save (.json)</button>
+      <button type="button" class="btn" id="f-demo">Load demo</button>
     </div>
     <input type="file" id="f-input" accept=".json,application/json" class="visually-hidden">
-    <p class="hint">Der Song wird automatisch im Browser gespeichert.</p>
+    <p class="hint">The song is saved in the browser automatically.</p>
     <h2>EXPORT</h2>
-    <div class="form">${slider('x-loops', 'Durchläufe', 1, 1, 4)}</div>
+    <div class="form">${slider('x-loops', 'Loops', 1, 1, 4)}</div>
     <div class="btn-row">
-      <button type="button" class="btn primary" id="x-wav">WAV exportieren</button>
+      <button type="button" class="btn primary" id="x-wav">Export WAV</button>
     </div>
-    <p class="hint" id="x-status">Weitere Formate (GBDK-C-Arrays, VGM, GBS/ROM, XM, MOD, Video) folgen laut Roadmap.</p>`;
+    <p class="hint" id="x-status">More formats (GBS/ROM, XM, MOD, video) are on the roadmap.</p>`;
   const input = $<HTMLInputElement>('f-input');
   $('f-new').addEventListener('click', () => {
-    if (!confirm('Neuen Song anlegen? Der aktuelle Song wird ersetzt.')) return;
+    if (!confirm('Start a new song? The current song will be replaced.')) return;
     loadSong(createSong());
   });
   $('f-demo').addEventListener('click', () => {
-    if (!confirm('Demo laden? Der aktuelle Song wird ersetzt.')) return;
+    if (!confirm('Load the demo? The current song will be replaced.')) return;
     loadSong(demoSong());
   });
   $('f-open').addEventListener('click', () => input.click());
@@ -1023,9 +1023,9 @@ function renderFilePanel() {
     if (!file) return;
     try {
       loadSong(parseSong(JSON.parse(await file.text())));
-      toast(`„${song.title}“ geladen`);
+      toast(`Loaded “${song.title}”`);
     } catch (err) {
-      toast(`Datei konnte nicht geladen werden: ${(err as Error).message}`);
+      toast(`Could not load file: ${(err as Error).message}`);
     }
   });
   $('f-save').addEventListener('click', () =>
@@ -1040,10 +1040,10 @@ function renderFilePanel() {
       const loops = Number($<HTMLInputElement>('x-loops').value);
       const { left, right, sampleRate } = await renderSong(structuredClone(song), {
         loops,
-        onProgress: (s) => (status.textContent = `Rendere… ${s.toFixed(0)} s`),
+        onProgress: (s) => (status.textContent = `Rendering… ${s.toFixed(0)} s`),
       });
       download(`${fileBase()}.wav`, encodeWav(left, right, sampleRate) as BlobPart, 'audio/wav');
-      status.textContent = `WAV fertig (${(left.length / sampleRate).toFixed(1)} s).`;
+      status.textContent = `WAV ready (${(left.length / sampleRate).toFixed(1)} s).`;
     } finally {
       btn.disabled = false;
     }
@@ -1052,41 +1052,41 @@ function renderFilePanel() {
 
 function renderHelpPanel() {
   const fx: [string, string][] = [
-    ['0xy', 'Arpeggio: Note, +x, +y Halbtöne pro Tick'],
-    ['1xx', 'Pitch hoch um xx pro Tick'],
-    ['2xx', 'Pitch runter um xx pro Tick'],
-    ['3xx', 'Portamento zur Note, Tempo xx'],
-    ['4xy', 'Vibrato: Tempo x, Tiefe y'],
-    ['5xx', 'Master-Lautstärke (NR50)'],
-    ['7xx', 'Note um xx Ticks verzögern'],
+    ['0xy', 'Arpeggio: note, +x, +y semitones per tick'],
+    ['1xx', 'Pitch up by xx per tick'],
+    ['2xx', 'Pitch down by xx per tick'],
+    ['3xx', 'Portamento to note, speed xx'],
+    ['4xy', 'Vibrato: speed x, depth y'],
+    ['5xx', 'Master volume (NR50)'],
+    ['7xx', 'Delay note by xx ticks'],
     ['8xx', 'Panning (NR51)'],
-    ['9xx', 'Duty (Pulse, 0–3) bzw. Wellenform (Wave)'],
-    ['Axy', 'Lautstärke-Slide: x hoch, y runter'],
-    ['Bxx', 'Sprung zu Order-Position xx'],
-    ['Cxy', 'Lautstärke x, Envelope y (Bit 3 = steigend)'],
-    ['Dxx', 'Pattern-Break, weiter in Zeile xx'],
-    ['Exx', 'Note nach xx Ticks abschneiden'],
-    ['Fxx', 'Speed (Ticks pro Zeile)'],
+    ['9xx', 'Duty (pulse, 0–3) or waveform (wave)'],
+    ['Axy', 'Volume slide: x up, y down'],
+    ['Bxx', 'Jump to order position xx'],
+    ['Cxy', 'Volume x, envelope y (bit 3 = up)'],
+    ['Dxx', 'Pattern break, continue at row xx'],
+    ['Exx', 'Cut note after xx ticks'],
+    ['Fxx', 'Speed (ticks per row)'],
   ];
   const keys: [string, string][] = [
-    ['Y S X D C …', 'Noten (untere Reihe), Q 2 W 3 E … obere Reihe'],
-    ['1', 'Note aus (===)'],
-    ['0–9, A–F', 'Werte in Instrument-, Lautstärke- und Effektspalte'],
-    ['Pfeile, Tab', 'Cursor bewegen, Kanal wechseln'],
-    ['Leertaste', 'Song abspielen / stoppen'],
-    ['Shift+Leertaste', 'Pattern ab Cursor in Schleife'],
-    ['Entf / ⌫', 'Feld löschen'],
-    ['Einfg', 'Zeile einfügen'],
-    ['Ü / +', 'Oktave runter / hoch (auch Numpad − / +)'],
+    ['Z S X D C …', 'Notes, lower row (physical key positions: Y on QWERTZ), Q 2 W 3 E … upper row'],
+    ['1', 'Note off (===)'],
+    ['0–9, A–F', 'Values in instrument, volume and effect columns'],
+    ['Arrows, Tab', 'Move cursor, switch channel'],
+    ['Space', 'Play / stop song'],
+    ['Shift+Space', 'Loop pattern from cursor'],
+    ['Del / ⌫', 'Clear field'],
+    ['Ins', 'Insert row'],
+    ['[ / ]', 'Octave down / up (also numpad − / +)'],
   ];
   const table = (rows: [string, string][]) =>
     `<table class="help-table">${rows.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('')}</table>`;
   panelEl.innerHTML = `
-    <h2>TASTATUR</h2>${table(keys)}
+    <h2>KEYBOARD</h2>${table(keys)}
     <h2>TOUCH</h2>
-    <p class="hint">Feld antippen, dann über das Keypad Noten oder Hex-Werte eingeben. Steuerkreuz bewegt den Cursor, START spielt den Song, SELECT das Pattern, A setzt die letzte Note, B löscht.</p>
-    <h2>EFFEKTE</h2>${table(fx)}
-    <p class="hint">Der Klang wird zyklusgenau aus den Registern der Game-Boy-APU erzeugt. Jeder Tick entspricht einem Frame (≈ 59,73 Hz).</p>`;
+    <p class="hint">Tap a field, then enter notes or hex values on the keypad. The D-pad moves the cursor, START plays the song, SELECT the pattern, A inserts the last note, B clears.</p>
+    <h2>EFFECTS</h2>${table(fx)}
+    <p class="hint">Sound is generated cycle-accurately from the Game Boy APU registers. One tick is one frame (≈ 59.73 Hz).</p>`;
 }
 
 function renderPanel() {

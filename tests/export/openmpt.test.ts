@@ -88,8 +88,9 @@ describe.runIf(!!process.env.OPENMPT)('libopenmpt cross-check', () => {
       const song = demoSong();
       const mod = load(l, encode(song).data);
       expect(l._openmpt_module_get_num_channels(mod)).toBe(4);
-      // Note column as libopenmpt reads it: same notes up to a fixed offset.
-      let offset: number | null = null;
+      // Note column as libopenmpt reads it: same notes up to a fixed offset
+      // per instrument (MOD shifts each sample into its three octaves).
+      const offsets = new Map<number, number>();
       let pattern = l._openmpt_module_get_order_pattern(mod, 0);
       if (name === 'XM') {
         expect(l._openmpt_module_get_num_orders(mod)).toBe(song.order.length);
@@ -101,12 +102,14 @@ describe.runIf(!!process.env.OPENMPT)('libopenmpt cross-check', () => {
           const cell = rows[r][ch];
           const note = l._openmpt_module_get_pattern_row_channel_command(mod, pattern, r, ch, CMD_NOTE);
           if (cell.note >= 0) {
-            offset ??= note - cell.note;
-            expect(note - cell.note).toBe(offset);
-            expect(l._openmpt_module_get_pattern_row_channel_command(mod, pattern, r, ch, CMD_INSTRUMENT)).toBeGreaterThan(0);
+            const ins = l._openmpt_module_get_pattern_row_channel_command(mod, pattern, r, ch, CMD_INSTRUMENT);
+            expect(ins).toBeGreaterThan(0);
+            if (!offsets.has(ins)) offsets.set(ins, note - cell.note);
+            expect(note - cell.note).toBe(offsets.get(ins));
           }
         }
-      expect(offset).not.toBeNull();
+      expect(offsets.size).toBeGreaterThan(1);
+      if (name === 'XM') expect(new Set(offsets.values()).size).toBe(1);
       // One tick per frame: the song lasts as long as on the Game Boy.
       const seconds = captureStream(song).frames.length / (4194304 / 70224);
       expect(l._openmpt_module_get_duration_seconds(mod)).toBeCloseTo(seconds, 0);

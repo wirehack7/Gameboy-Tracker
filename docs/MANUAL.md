@@ -527,6 +527,21 @@ Both belong to the browser and the device: they are lost when you clear the site
 not keep them (the FILE tab says so when the browser refuses to store the library). Use **Back up library
 (.zip)** now and then, and download song files for anything you want to keep or move to another device.
 
+### Install as an app and use offline
+
+GB Tracker is a web app you can install (a PWA). After the first visit the browser keeps the whole site, the
+tracker and this manual, and a message says that it now also works without a connection.
+
+- **Android (Chrome, Edge, Samsung Internet):** open the browser menu and choose **Install app** or **Add to
+  Home screen**.
+- **iPhone and iPad (Safari):** tap **Share**, then **Add to Home Screen**.
+- **Desktop (Chrome, Edge):** click the install icon at the right of the address bar.
+
+The installed app opens in its own window without the browser bar and starts offline as well. Songs stay in the
+same place as in the browser (the working copy and the library of this browser), so nothing is lost by
+installing. When a new version of the tracker is online, it is loaded in the background and a message asks you
+to reload the page to use it.
+
 ### The FILE tab
 
 The top line shows the title of the song you are editing and its state: **saved**, **unsaved changes**, or
@@ -751,9 +766,7 @@ window closes it; while it is open, keys do not reach the tracker.
 These are planned and listed in the [roadmap](https://github.com/wirehack7/Gameboy-Tracker/blob/main/ROADMAP.md):
 
 - XM and MOD import
-- Sample playback (drum kits, voices) on the wave channel
 - Instrument macros (per-tick tables)
-- Offline use as an installable app (PWA)
 
 This manual is updated together with the tracker. Found a mistake or something missing? Open an issue at
 https://github.com/wirehack7/Gameboy-Tracker/issues.

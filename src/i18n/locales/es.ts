@@ -234,6 +234,8 @@ export const es: Translation = {
   'edit.redoTitle': "Rehacer (Ctrl+Y o Ctrl+Mayús+Z)",
   'edit.undone': "Deshecho",
   'edit.redone': "Rehecho",
+  'pwa.updated': "Hay una versión nueva: recarga la página para usarla",
+  'pwa.offline': "Guardado para usar sin conexión: GB Tracker ya funciona offline",
   'edit.copied': "Copiadas {rows} filas × {channels} canales",
   'edit.cut': "Cortadas {rows} filas × {channels} canales",
   'help.key.undo': "Deshacer / rehacer",

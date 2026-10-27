@@ -16,7 +16,8 @@
  *   header;
  * - the theme button cycles auto, light and dark;
  * - German, Spanish and French browsers get their UI language, still without sideways scrolling;
- * - the manual page loads its sections, contents list and images on desktop and phone.
+ * - the manual page loads its sections, contents list and images on desktop and phone;
+ * - the scope traces stay centred while playing (Chromium) and the piano keys keep their size at every octave.
  *
  * Headless Firefox and WebKit on CI have no sound device and their audio clock may never run,
  * so the check that the play cursor moves through the rows runs in Chromium only.
@@ -136,6 +137,22 @@ for (const screen of screens) {
       if (engine === 'chromium') {
         // The worklet reports each row it plays; the play cursor must reach a later row.
         await page.waitForFunction(() => Number(document.querySelector('.play-row')?.dataset.row ?? 0) > 2, null, { timeout: 10000 });
+        // The scope traces stay centred while playing (the DAC output is unipolar).
+        const off = await page.evaluate(() =>
+          [...document.querySelectorAll('#chan-head canvas')].map((c) => {
+            const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+            let top = c.height;
+            let bottom = -1;
+            for (let i = 3; i < d.length; i += 4)
+              if (d[i] > 100) {
+                const y = Math.floor((i - 3) / 4 / c.width);
+                top = Math.min(top, y);
+                bottom = Math.max(bottom, y);
+              }
+            return bottom < 0 ? 1 : Math.abs((top + bottom) / 2 / c.height - 0.5);
+          }),
+        );
+        assert(off.every((o) => o < 0.2), `scope traces are off-centre by ${off.map((o) => o.toFixed(2)).join(' ')}`);
       } else {
         await page.waitForTimeout(500);
       }
@@ -143,6 +160,23 @@ for (const screen of screens) {
       await press(page, page.locator('#stop'), touch);
       await page.waitForFunction(() => document.querySelector('#play-song')?.getAttribute('aria-pressed') === 'false');
       assert(!(await page.locator('#play-led.on').count()), 'the play LED stayed on after Stop');
+      assert(errors.length === 0, `errors: ${errors.join(' | ')}`);
+    } finally {
+      await context.close();
+    }
+  });
+
+  await check(`${screen.name}: piano keys keep their size at every octave`, async () => {
+    const { context, page, errors } = await open(screen);
+    try {
+      const width = () => page.locator('#piano .pkey.white').first().evaluate((el) => el.getBoundingClientRect().width);
+      const first = await width();
+      for (let i = 0; i < 8; i++) {
+        await page.keyboard.press(']');
+        const w = await width();
+        assert(Math.abs(w - first) < 1, `white keys are ${w.toFixed(1)}px at octave ${await page.textContent('#oct')}, ${first.toFixed(1)}px before`);
+      }
+      assert((await page.textContent('#oct')) === '8', '] did not raise the octave to 8');
       assert(errors.length === 0, `errors: ${errors.join(' | ')}`);
     } finally {
       await context.close();

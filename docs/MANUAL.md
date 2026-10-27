@@ -237,7 +237,8 @@ Tip: add the page to your home screen for a full-screen tracker without browser 
 
 - The piano starts at C of the current octave (**OCT**, `[` `]`) and shows as many octaves as fit the
   width of the window (up to 4). On touch screens the keys are wider, about 45 px, so a phone shows one octave
-  and a tablet about three.
+  and a tablet about three. Near the top of the note range the piano shows the highest octaves that fit, so
+  the keys keep their size whatever the octave.
 - With [record mode](#record-mode) on and the cursor on a **note column**, pressing a key enters the note and
   plays it, like a note key on the computer keyboard. On any other column, or with record mode off, the key only
   plays the note, so you can try out melodies without changing the pattern.
@@ -345,6 +346,15 @@ The **WAVE** tab edits the 16 waveforms (0–F) for the wave channel. A waveform
 - **Presets:** triangle, saw, square, sine, pulse25 replace the current wave.
 - **HEX:** the wave as 32 hex digits, one per sample. Edit them and press Enter to apply; useful to copy waves
   between songs or from other Game Boy tools.
+- **Import audio…:** makes the waveform from an audio file (WAV, or anything else your browser can play, such as
+  MP3, OGG or FLAC). Stereo files are mixed to mono, the level is normalised to use all 16 steps.
+  - Short files of up to 2048 samples are treated as one single-cycle waveform (the format of waveform libraries
+    such as AKWF) and squeezed into 32 samples as a whole.
+  - Longer recordings, such as a sustained synth or organ note, are searched for their pitch: one period is cut
+    out of the loudest part of the file, starting at a rising zero crossing. Recordings without a clear pitch
+    (noise, drums) are rejected.
+
+  The result is an ordinary waveform: it can be played at any pitch and edited further.
 
 A changed waveform is used from the next note on. To load a new wave the tracker briefly switches the wave
 channel's DAC off, as hardware drivers do; this avoids the DMG wave RAM corruption bug.
@@ -436,7 +446,8 @@ sound exactly like the target.
 - **■** stops. Pressing Space again also stops.
 - **Follow playback** (SONG tab) makes the pattern view follow the song. Switch it off to edit another part
   while the song plays.
-- **Scopes:** each channel header shows its waveform live.
+- **Scopes:** each channel header shows its waveform live, centred on the middle line like the Game Boy's
+  output (its capacitor removes the DC offset of the DACs).
 - **Mute:** **M** on a channel header mutes or unmutes the channel. Mute only affects playback in the tracker,
   not exports.
 - **VOL** in the toolbar sets the listening volume; it does not change the song or the exports.
@@ -634,6 +645,7 @@ format is simple enough to play from an assembly driver (for example in RGBDS) i
 These are planned and listed in the [roadmap](https://github.com/wirehack7/Gameboy-Tracker/blob/main/ROADMAP.md):
 
 - XM and MOD import
+- Sample playback (drum kits, voices) on the wave channel
 - Video export with scopes and scrolling patterns, more audio formats
 - Undo/redo, block copy and paste
 - Instrument macros (per-tick tables)

@@ -1,5 +1,6 @@
 import './style.css';
 import { AudioClient } from './audio/client';
+import { toMono, waveFromAudio } from './audio/import';
 import { demoSong } from './tracker/demo';
 import { gbdkProject } from './export/gbdk';
 import { captureStream } from './export/stream';
@@ -12,7 +13,8 @@ import { unzip, zip } from './export/zip';
 import { MidiInput, MidiStatus, midiToNote } from './input/midi';
 import { NOTE_COUNT } from './tracker/notes';
 import { SongLibrary, SongMeta, copySounds, fileName, openStore, uniqueNames } from './tracker/library';
-import { pianoKeys, pianoOctaves } from './ui/piano';
+import { pianoKeys, pianoOctaves, pianoWhites } from './ui/piano';
+import { scopeTrace } from './ui/scope';
 import {
   CHANNEL_KINDS,
   CHANNEL_COUNT,
@@ -727,8 +729,8 @@ function renderPiano() {
   if (state === pianoState) return;
   pianoState = state;
   const keys = pianoKeys(Math.min(octave, 8), octaves);
-  const whites = keys.filter((k) => !k.black).length;
-  pianoEl.style.setProperty('--whites', String(whites));
+  // A fixed slot count keeps the key size when the top octave has no closing C.
+  pianoEl.style.setProperty('--whites', String(pianoWhites(octaves)));
   pianoEl.innerHTML = keys
     .map(
       (k) =>
@@ -961,10 +963,10 @@ function drawScopes() {
       g.moveTo(0, h / 2);
       g.lineTo(w, h / 2);
     } else {
-      const n = Math.min(scopeFrames, 512);
-      const start = scopeFrames - n;
+      const trace = scopeTrace(scopeData, scopeFrames, ch);
+      const n = trace.length;
       for (let i = 0; i < n; i++) {
-        const v = scopeData[(start + i) * 4 + ch];
+        const v = trace[i];
         const x = (i / (n - 1)) * w;
         const y = h / 2 - v * (h / 2 - 3);
         if (i === 0) g.moveTo(x, y);
@@ -1126,6 +1128,9 @@ function renderWavePanel() {
     <h2>${t('wave.heading', { n: waveIndex.toString(16).toUpperCase() })}</h2>
     <canvas class="wave-canvas" id="wave-canvas" width="320" height="160" aria-label="${t('wave.draw')}"></canvas>
     <div class="btn-row">${presets.map((p) => `<button type="button" class="btn" data-preset="${p}">${t(`wave.preset.${p}` as MessageKey)}</button>`).join('')}</div>
+    <div class="btn-row"><button type="button" class="btn" id="w-import">${t('wave.import')}</button></div>
+    <input type="file" id="w-file" accept="audio/*,.wav" class="visually-hidden">
+    <p class="hint">${t('wave.importHint')}</p>
     <h2>${t('wave.hex')}</h2>
     <div class="form"><label for="w-hex">${t('wave.data')}</label><input type="text" id="w-hex" spellcheck="false" maxlength="32"></div>
     <p class="hint">${t('wave.hint')}</p>`;
@@ -1184,6 +1189,30 @@ function renderWavePanel() {
       changed();
     }),
   );
+  const fileInput = $<HTMLInputElement>('w-file');
+  $('w-import').addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', async () => {
+    const file = fileInput.files?.[0];
+    fileInput.value = '';
+    if (!file) return;
+    try {
+      const { channels, rate } = await decodeAudioFile(file);
+      waveFromAudio(toMono(channels), rate).forEach((v, i) => (wave[i] = v));
+      draw();
+      changed();
+      toast(t('wave.imported', { name: file.name }));
+    } catch (err) {
+      toast(t('wave.importError', { error: (err as Error).message }));
+    }
+  });
+}
+
+/** Decode any audio file the browser understands to PCM. */
+async function decodeAudioFile(file: File): Promise<{ channels: Float32Array[]; rate: number }> {
+  const ctx = new OfflineAudioContext(1, 1, 44100);
+  const buffer = await ctx.decodeAudioData(await file.arrayBuffer());
+  const channels = Array.from({ length: buffer.numberOfChannels }, (_, i) => buffer.getChannelData(i));
+  return { channels, rate: buffer.sampleRate };
 }
 
 function renderSongPanel() {

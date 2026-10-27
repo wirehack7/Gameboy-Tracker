@@ -118,6 +118,11 @@ export const en = {
   'wave.hint':
     'Draw with mouse or finger. The wave is loaded on the next note; as on the hardware, the DAC is switched off briefly to do so.',
   'wave.hexError': 'Exactly 32 hex digits are required',
+  'wave.import': 'Import audio…',
+  'wave.importHint':
+    'Load a WAV (or any audio file the browser can play) to make a waveform: short single-cycle files are used as a whole, longer recordings have one period cut out of their loudest part.',
+  'wave.imported': 'Waveform made from {name}',
+  'wave.importError': 'Could not import: {error}',
   'wave.preset.triangle': 'triangle',
   'wave.preset.saw': 'saw',
   'wave.preset.square': 'square',

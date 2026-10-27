@@ -99,6 +99,11 @@ export const fr: Translation = {
   'wave.hint':
     'Dessinez à la souris ou au doigt. L’onde est chargée à la note suivante ; comme sur le matériel, le DAC est brièvement coupé pour cela.',
   'wave.hexError': 'Exactement 32 chiffres hexadécimaux sont requis',
+  'wave.import': 'Importer un son…',
+  'wave.importHint':
+    'Charge un WAV (ou tout fichier audio lisible par le navigateur) pour créer une forme d’onde : les fichiers courts à cycle unique sont utilisés entiers, les enregistrements plus longs fournissent une période prise dans leur partie la plus forte.',
+  'wave.imported': 'Forme d’onde créée à partir de {name}',
+  'wave.importError': 'Import impossible : {error}',
   'wave.preset.triangle': 'triangle',
   'wave.preset.saw': 'dent de scie',
   'wave.preset.square': 'carré',

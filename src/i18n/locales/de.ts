@@ -116,6 +116,11 @@ export const de: Translation = {
   'wave.hint':
     'Mit Maus oder Finger zeichnen. Die Welle wird bei der nächsten Note geladen; wie auf der Hardware wird der DAC dafür kurz abgeschaltet.',
   'wave.hexError': 'Es werden genau 32 Hex-Ziffern benötigt',
+  'wave.import': 'Audio importieren…',
+  'wave.importHint':
+    'Lade eine WAV-Datei (oder jede Audiodatei, die der Browser abspielen kann), um eine Wellenform zu erzeugen: Kurze Single-Cycle-Dateien werden komplett verwendet, aus längeren Aufnahmen wird eine Periode aus dem lautesten Teil geschnitten.',
+  'wave.imported': 'Wellenform aus {name} erzeugt',
+  'wave.importError': 'Import fehlgeschlagen: {error}',
   'wave.preset.triangle': 'Dreieck',
   'wave.preset.saw': 'Sägezahn',
   'wave.preset.square': 'Rechteck',

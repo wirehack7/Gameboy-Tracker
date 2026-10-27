@@ -30,6 +30,7 @@ sounds right in the tracker sounds the same on hardware, in the exported ROM and
 - [Using the music in a GBDK game](#using-the-music-in-a-gbdk-game)
 - [Tips and hardware quirks](#tips-and-hardware-quirks)
 - [About and the mini game](#about-and-the-mini-game)
+- [Privacy](#privacy)
 - [Not available yet](#not-available-yet)
 
 ## Quick start
@@ -760,6 +761,14 @@ code and this manual. It also holds a tiny Game Boy style jump'n'run: jump over 
 can, the screen gets faster over time. Press **Space**, **↑**, **X** or **Z**, tap the screen or press the red
 **A** button to jump. Your best score is kept in the browser. **Esc**, the **✕** button or a click outside the
 window closes it; while it is open, keys do not reach the tracker.
+
+## Privacy
+
+Songs, instruments and the library never leave your device: they are kept in this browser's storage only. The
+site at gb.chiptrackr.com uses [Umami](https://umami.is), a cookie-free analytics service, to count visits and
+which features are used (for example play, which export formats, import, theme and language), plus
+recordings of how the page is used (Umami's session recorder). Song files are not uploaded. If your browser sends **Do Not Track** or **Global
+Privacy Control**, nothing is loaded or recorded at all. The installed app works offline without it.
 
 ## Not available yet
 

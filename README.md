@@ -97,6 +97,18 @@ The manual is written in `docs/MANUAL.md`; the build renders it into `manual.htm
 (`src/manual/`). `tests/docs/manual.test.ts` fails when an effect, export button or tab is missing from the
 manual, so update it in the same PR as the feature.
 
+### Analytics
+
+The live site counts visits and a few anonymous actions with [Umami](https://umami.is) (play/stop, exports by
+format, import, library actions, theme and language, piano/MIDI, About game, PWA install and launch). The
+tracker (`script.js`) and Umami's session recorder (`recorder.js`) are only added at build time by the Pages
+workflow, from the repository variables `UMAMI_HOST` (e.g. `https://umami.example.com`) and `UMAMI_WEBSITE_ID`
+(Settings > Secrets and variables > Actions > Variables). Without them, as in local, dev and CI builds and
+forks, the site contains no tracking (`src/analytics/plugin.ts`). Browsers that send Do Not Track or Global
+Privacy Control load neither script. Events go through `track()` in `src/analytics/track.ts`, which does
+nothing when Umami is not loaded. The service worker only handles requests inside the site's own scope, so the
+Umami scripts are never cached for offline use.
+
 ## Hardware coverage
 
 The APU tests in `tests/apu/` check the documented behaviour of the original hardware (Pan Docs, gbdev wiki

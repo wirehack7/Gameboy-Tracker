@@ -16,6 +16,7 @@ import { unzip, zip } from './export/zip';
 import { MidiInput, MidiStatus, midiToNote } from './input/midi';
 import { NOTE_COUNT } from './tracker/notes';
 import { SongLibrary, SongMeta, copySounds, fileName, openStore, uniqueNames } from './tracker/library';
+import { track } from './analytics/track';
 import { openAbout } from './ui/about';
 import { pianoKeys, pianoOctaves, pianoWhites } from './ui/piano';
 import { scopeTrace } from './ui/scope';
@@ -309,6 +310,7 @@ $('theme').addEventListener('click', () => {
   const next = cur === 'auto' ? 'light' : cur === 'light' ? 'dark' : 'auto';
   store(THEME_KEY, next);
   applyTheme(next);
+  track('theme', { theme: next });
 });
 
 // ----------------------------------------------------------------- language
@@ -327,6 +329,7 @@ $('lang').addEventListener('change', (e) => {
   const code = (e.target as HTMLSelectElement).value;
   store(LANG_KEY, code);
   setLocale(code);
+  track('language', { lang: code });
 });
 onLocaleChange(() => {
   translateShell();
@@ -615,9 +618,11 @@ function togglePlay(loopPattern = false) {
   if (playing) {
     playing = false;
     audio.send({ type: 'stop' });
+    track('stop');
   } else {
     playing = true;
     audio.send({ type: 'play', order, row: loopPattern ? cursor.row : 0, loopPattern });
+    track('play', { mode: loopPattern ? 'pattern' : 'song' });
   }
   $('play-led').classList.toggle('on', playing);
   $('play-song').setAttribute('aria-pressed', String(playing && !loopPattern));
@@ -939,6 +944,7 @@ pianoEl.addEventListener('pointercancel', pianoUp);
 $('piano-toggle').addEventListener('click', () => {
   pianoVisible = !pianoVisible;
   store(PIANO_KEY, pianoVisible ? 'on' : 'off');
+  track('piano', { on: pianoVisible });
   pianoState = '';
   renderPiano();
   renderKeypad();
@@ -981,8 +987,12 @@ $('midi').addEventListener('click', () => {
   if (midi.status.enabled) {
     midi.disable();
     store(MIDI_KEY, 'off');
+    track('midi', { on: false });
   } else {
-    void midi.enable().then((s) => store(MIDI_KEY, s.enabled ? 'on' : 'off'));
+    void midi.enable().then((s) => {
+      store(MIDI_KEY, s.enabled ? 'on' : 'off');
+      track('midi', { on: s.enabled, inputs: s.inputs.length });
+    });
   }
 });
 renderMidi({ ...midi.status, error: undefined });
@@ -1566,10 +1576,14 @@ function renderFilePanel() {
   renderLibraryList();
   const input = $<HTMLInputElement>('f-input');
   $('f-new').addEventListener('click', () => {
-    if (confirmDiscard()) loadSong(createSong(), null);
+    if (!confirmDiscard()) return;
+    loadSong(createSong(), null);
+    track('song-new');
   });
   $('f-demo').addEventListener('click', () => {
-    if (confirmDiscard()) loadSong(demoSong(), null);
+    if (!confirmDiscard()) return;
+    loadSong(demoSong(), null);
+    track('song-demo');
   });
   $('f-store').addEventListener('click', () => void saveToLibrary());
   $('f-saveas').addEventListener('click', () => {
@@ -1589,9 +1603,10 @@ function renderFilePanel() {
     input.value = '';
     if (files.length) await importFiles(files);
   });
-  $('f-save').addEventListener('click', () =>
-    download(`${fileBase()}.gbt.json`, JSON.stringify(song), 'application/json'),
-  );
+  $('f-save').addEventListener('click', () => {
+    download(`${fileBase()}.gbt.json`, JSON.stringify(song), 'application/json');
+    track('export', { format: 'json' });
+  });
   $('f-backup').addEventListener('click', () => void backupLibrary());
   bindRange('x-loops', () => {});
   /** Render audio with progress in the status line, then hand over the file. */
@@ -1609,6 +1624,7 @@ function renderFilePanel() {
           onProgress: (s) => (status.textContent = t('export.rendering', { seconds: num(s, 0) })),
         });
         download(name, data as BlobPart, type);
+        track('export', { format: id.slice(2) });
         status.textContent = t('export.audioReady', { name, seconds: num(seconds, 1) });
       } catch (err) {
         status.textContent = (err as Error).message;
@@ -1656,11 +1672,13 @@ function renderFilePanel() {
   $('x-vgm').addEventListener('click', () => {
     const vgm = encodeVgm(captureStream(structuredClone(song)), { title: song.title, author: song.author });
     download(`${fileBase()}.vgm`, vgm as BlobPart, 'application/octet-stream');
+    track('export', { format: 'vgm' });
   });
-  const exportBinary = (build: () => { name: string; data: Uint8Array; warnings?: string[] }) => {
+  const exportBinary = (format: string, build: () => { name: string; data: Uint8Array; warnings?: string[] }) => {
     try {
       const { name, data, warnings } = build();
       download(name, data as BlobPart, 'application/octet-stream');
+      track('export', { format });
       $('x-status').textContent = t('export.size', { name, bytes: data.length });
       if (warnings?.length) $('x-status').textContent += ` ${t('export.approxHint', { list: warnings.join(', ') })}`;
     } catch (err) {
@@ -1668,20 +1686,21 @@ function renderFilePanel() {
     }
   };
   $('x-gbs').addEventListener('click', () =>
-    exportBinary(() => ({ name: `${fileBase()}.gbs`, data: buildGbs(structuredClone(song)).data })),
+    exportBinary('gbs', () => ({ name: `${fileBase()}.gbs`, data: buildGbs(structuredClone(song)).data })),
   );
   $('x-rom').addEventListener('click', () =>
-    exportBinary(() => ({ name: `${fileBase()}.${romExtension(song)}`, data: buildRom(structuredClone(song)).data })),
+    exportBinary('rom', () => ({ name: `${fileBase()}.${romExtension(song)}`, data: buildRom(structuredClone(song)).data })),
   );
   $('x-xm').addEventListener('click', () =>
-    exportBinary(() => ({ name: `${fileBase()}.xm`, ...encodeXm(structuredClone(song)) })),
+    exportBinary('xm', () => ({ name: `${fileBase()}.xm`, ...encodeXm(structuredClone(song)) })),
   );
   $('x-mod').addEventListener('click', () =>
-    exportBinary(() => ({ name: `${fileBase()}.mod`, ...encodeMod(structuredClone(song)) })),
+    exportBinary('mod', () => ({ name: `${fileBase()}.mod`, ...encodeMod(structuredClone(song)) })),
   );
   $('x-gbdk').addEventListener('click', () => {
     const { zip, name, size } = gbdkProject(structuredClone(song));
     download(`${name}_gbdk.zip`, zip as BlobPart, 'application/zip');
+    track('export', { format: 'gbdk' });
     $('x-status').textContent = t('export.gbdkReady', { bytes: size });
   });
 }
@@ -1721,7 +1740,10 @@ function renderHelpPanel() {
     <p class="hint">${t('help.pianoHint')}</p>
     <h2>${t('help.effects')}</h2>${table(fx)}
     <p class="hint">${t('help.footer')}</p>`;
-  $('about-open').addEventListener('click', openAbout);
+  $('about-open').addEventListener('click', () => {
+    openAbout();
+    track('about');
+  });
 }
 
 function renderPanel() {
@@ -1818,6 +1840,7 @@ async function saveToLibrary(asCopy = false) {
     songId = meta.id;
     dirty = false;
     persist(true);
+    track(asCopy ? 'song-save-as' : 'song-save');
     toast(t('lib.savedToast', { title: meta.title || t('lib.untitled') }));
   } catch (err) {
     toast(t('lib.error', { error: (err as Error).message }));
@@ -1865,7 +1888,10 @@ async function libraryAction(act: string, id: string) {
         persist(true);
         renderSongState();
       }
+    } else {
+      return;
     }
+    track('library', { action: act });
   } catch (err) {
     toast(t('lib.error', { error: (err as Error).message }));
   }
@@ -1894,6 +1920,7 @@ async function importFiles(files: File[]) {
     }
   }
   if (failed.length) toast(t('file.loadError', { error: failed.join(', ') }));
+  track('import', { files: files.length, songs: songs.length, failed: failed.length });
   if (!songs.length) return;
   const single = songs.length === 1 && files.length === 1 && !/\.zip$/i.test(files[0].name);
   if (single && !confirmDiscard()) return;
@@ -1923,6 +1950,7 @@ async function backupLibrary() {
   const names = uniqueNames(songs.map((s) => fileName(s.title)));
   const data = zip(songs.map((s, i) => ({ name: `${names[i]}.gbt.json`, data: JSON.stringify(s) })));
   download(`gb-tracker-library-${new Date().toISOString().slice(0, 10)}.zip`, data as BlobPart, 'application/zip');
+  track('library', { action: 'backup', songs: songs.length });
 }
 
 void (async () => {
@@ -1965,4 +1993,9 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   const firstInstall = !sw.controller;
   sw.addEventListener('controllerchange', () => toast(t(firstInstall ? 'pwa.offline' : 'pwa.updated')));
   addEventListener('load', () => sw.register('./sw.js').catch(() => {}));
+}
+addEventListener('appinstalled', () => track('pwa-install'));
+if (matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone) {
+  // Umami loads deferred, after this module; report the launch once it is there.
+  addEventListener('load', () => track('pwa-launch'));
 }

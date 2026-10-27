@@ -36,12 +36,14 @@ import {
   noteFromKey,
   transpose,
 } from './ui/editor';
+import { LOCALES, MessageKey, getLocale, matchLocale, onLocaleChange, setLocale, t, translateDom } from './i18n';
 
 const STORAGE_KEY = 'gb-tracker.song';
 const THEME_KEY = 'gb-tracker.theme';
 const VOLUME_KEY = 'gb-tracker.volume';
 const PIANO_KEY = 'gb-tracker.piano';
 const MIDI_KEY = 'gb-tracker.midi';
+const LANG_KEY = 'gb-tracker.lang';
 const DEFAULT_VOLUME = 35;
 
 // ------------------------------------------------------------------ storage
@@ -111,70 +113,73 @@ const hex2 = (v: number) => v.toString(16).toUpperCase().padStart(2, '0');
 
 const app = document.getElementById('app')!;
 app.dataset.view = 'pattern';
-const stepper = (id: string, label: string, title: string) =>
-  `<span class="field" title="${title}">${label} <span class="stepper"><button type="button" id="${id}-down" aria-label="${title} down">‹</button><output id="${id}"></output><button type="button" id="${id}-up" aria-label="${title} up">›</button></span></span>`;
+setLocale(loadStored(LANG_KEY) ?? matchLocale(navigator.languages ?? [navigator.language]));
+document.documentElement.lang = getLocale();
+const stepper = (id: string, label: MessageKey, title: MessageKey) =>
+  `<span class="field" data-i18n-title="${title}"><span data-i18n="${label}"></span> <span class="stepper"><button type="button" id="${id}-down" data-step-name="${title}" data-step-dir="down">‹</button><output id="${id}"></output><button type="button" id="${id}-up" data-step-name="${title}" data-step-dir="up">›</button></span></span>`;
 app.innerHTML = `
   <header class="toolbar">
-    <div class="brand"><span class="led" id="play-led" title="Playing"></span><h1>GB TRACKER<span>DMG · CGB</span></h1></div>
+    <div class="brand"><span class="led" id="play-led" data-i18n-title="app.playing"></span><h1>GB TRACKER<span>DMG · CGB</span></h1></div>
     <div class="transport">
-      <button type="button" class="round-btn" id="play-song" title="Play song (Space)" aria-label="Play song">▶</button>
-      <button type="button" class="round-btn" id="play-pattern" title="Loop pattern from cursor (Shift+Space)" aria-label="Loop pattern">⟳</button>
-      <button type="button" class="round-btn dark" id="stop" title="Stop" aria-label="Stop">■</button>
+      <button type="button" class="round-btn" id="play-song" data-i18n-title="transport.playSong" data-i18n-aria-label="transport.playSongLabel">▶</button>
+      <button type="button" class="round-btn" id="play-pattern" data-i18n-title="transport.loopPattern" data-i18n-aria-label="transport.loopPatternLabel">⟳</button>
+      <button type="button" class="round-btn dark" id="stop" data-i18n-title="transport.stop" data-i18n-aria-label="transport.stop">■</button>
     </div>
     <div class="fields">
-      ${stepper('ord', 'ORD', 'Order position')}
-      <span class="field">PAT <output id="pat"></output></span>
-      ${stepper('oct', 'OCT', 'Octave')}
-      ${stepper('ins', 'INS', 'Instrument')}
-      ${stepper('stp', 'STEP', 'Edit step')}
-      ${stepper('spd', 'SPD', 'Speed')}
+      ${stepper('ord', 'field.ord', 'field.ordTitle')}
+      <span class="field"><span data-i18n="field.pat"></span> <output id="pat"></output></span>
+      ${stepper('oct', 'field.oct', 'field.octTitle')}
+      ${stepper('ins', 'field.ins', 'field.insTitle')}
+      ${stepper('stp', 'field.step', 'field.stepTitle')}
+      ${stepper('spd', 'field.spd', 'field.spdTitle')}
       <span class="field"><output class="badge" id="model"></output></span>
     </div>
     <div class="spacer"></div>
-    <button class="pill-btn" id="piano-toggle" type="button" title="Show or hide the on-screen piano">KEYS</button>
-    <button class="pill-btn" id="midi" type="button" title="Play and enter notes from a MIDI keyboard">MIDI</button>
-    <label class="field volume" title="Master volume (playback only, exports are unaffected)">VOL <input type="range" id="vol" min="0" max="100" step="1"><output id="vol-out"></output></label>
+    <button class="pill-btn" id="piano-toggle" type="button" data-i18n-title="piano.toggleTitle" data-i18n="piano.toggle"></button>
+    <button class="pill-btn" id="midi" type="button"></button>
+    <label class="field volume" data-i18n-title="volume.title"><span data-i18n="volume.label"></span> <input type="range" id="vol" min="0" max="100" step="1"><output id="vol-out"></output></label>
+    <select class="pill-btn lang" id="lang" data-i18n-title="language.title" data-i18n-aria-label="language.title">${LOCALES.map((l) => `<option value="${l.code}" lang="${l.code}">${l.name}</option>`).join('')}</select>
     <button class="pill-btn" id="theme" type="button"></button>
   </header>
   <div class="workspace">
-    <aside class="sidebar left" aria-label="Order and instruments">
+    <aside class="sidebar left" data-i18n-aria-label="layout.lists">
       <section class="box">
-        <h2>ORDER</h2>
+        <h2 data-i18n="order.title"></h2>
         <div class="order-list" id="order-list"></div>
         <div class="mini-btns">
-          <button type="button" id="o-dec" title="Previous pattern number">PAT−</button>
-          <button type="button" id="o-inc" title="Next pattern number">PAT+</button>
-          <button type="button" id="o-ins" title="Insert position (same pattern)">INS</button>
-          <button type="button" id="o-dup" title="Insert a copy of this pattern">DUP</button>
-          <button type="button" id="o-del" title="Delete position">DEL</button>
+          <button type="button" id="o-dec" data-i18n-title="order.patDownTitle" data-i18n="order.patDown"></button>
+          <button type="button" id="o-inc" data-i18n-title="order.patUpTitle" data-i18n="order.patUp"></button>
+          <button type="button" id="o-ins" data-i18n-title="order.insertTitle" data-i18n="order.insert"></button>
+          <button type="button" id="o-dup" data-i18n-title="order.duplicateTitle" data-i18n="order.duplicate"></button>
+          <button type="button" id="o-del" data-i18n-title="order.deleteTitle" data-i18n="order.delete"></button>
         </div>
       </section>
       <section class="box grow">
-        <h2 id="inst-title">INSTRUMENTS</h2>
+        <h2 id="inst-title"></h2>
         <div class="inst-list" id="inst-list"></div>
       </section>
     </aside>
-    <main class="editor" aria-label="Pattern editor">
+    <main class="editor" data-i18n-aria-label="layout.editor">
       <div class="chan-head" id="chan-head"></div>
-      <div class="pattern" id="pattern" tabindex="0" role="grid" aria-label="Pattern"></div>
-      <div class="piano" id="piano" aria-label="Piano"></div>
+      <div class="pattern" id="pattern" tabindex="0" role="grid" data-i18n-aria-label="layout.pattern"></div>
+      <div class="piano" id="piano" data-i18n-aria-label="piano.label"></div>
       <div class="keypad" id="keypad"></div>
     </main>
-    <aside class="sidebar right" aria-label="Editors">
+    <aside class="sidebar right" data-i18n-aria-label="layout.editors">
       <div class="tabs" role="tablist">
-        <button type="button" role="tab" data-tab="inst">INSTR</button>
-        <button type="button" role="tab" data-tab="wave">WAVE</button>
-        <button type="button" role="tab" data-tab="song">SONG</button>
-        <button type="button" role="tab" data-tab="file">FILE</button>
-        <button type="button" role="tab" data-tab="help">HELP</button>
+        <button type="button" role="tab" data-tab="inst" data-i18n="tab.inst"></button>
+        <button type="button" role="tab" data-tab="wave" data-i18n="tab.wave"></button>
+        <button type="button" role="tab" data-tab="song" data-i18n="tab.song"></button>
+        <button type="button" role="tab" data-tab="file" data-i18n="tab.file"></button>
+        <button type="button" role="tab" data-tab="help" data-i18n="tab.help"></button>
       </div>
       <div class="panel" id="panel"></div>
     </aside>
   </div>
-  <nav class="mobile-nav" aria-label="Views">
-    <button type="button" data-view="pattern">PATTERN</button>
-    <button type="button" data-view="lists">ORDER · INSTR</button>
-    <button type="button" data-view="edit">EDIT</button>
+  <nav class="mobile-nav" data-i18n-aria-label="nav.views">
+    <button type="button" data-view="pattern" data-i18n="nav.pattern"></button>
+    <button type="button" data-view="lists" data-i18n="nav.lists"></button>
+    <button type="button" data-view="edit" data-i18n="nav.edit"></button>
   </nav>
   <div class="toast" id="toast" role="status"></div>
 `;
@@ -213,7 +218,7 @@ volumeInput.addEventListener('input', () => store(VOLUME_KEY, String(applyVolume
 function applyTheme(theme: string | null) {
   if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
   else delete document.documentElement.dataset.theme;
-  $('theme').textContent = theme === 'dark' ? '☾ DARK' : theme === 'light' ? '☀ LIGHT' : '◐ AUTO';
+  $('theme').textContent = t(theme === 'dark' ? 'theme.dark' : theme === 'light' ? 'theme.light' : 'theme.auto');
 }
 applyTheme(loadStored(THEME_KEY));
 $('theme').addEventListener('click', () => {
@@ -223,9 +228,37 @@ $('theme').addEventListener('click', () => {
   applyTheme(next);
 });
 
+// ----------------------------------------------------------------- language
+
+/** Applies the current locale to the static shell; dynamic parts are re-rendered. */
+function translateShell() {
+  translateDom(app);
+  app.querySelectorAll<HTMLElement>('[data-step-name]').forEach((b) => {
+    const name = t(b.dataset.stepName as MessageKey);
+    b.setAttribute('aria-label', t(b.dataset.stepDir === 'up' ? 'field.up' : 'field.down', { name }));
+  });
+  ($('lang') as HTMLSelectElement).value = getLocale();
+}
+translateShell();
+$('lang').addEventListener('change', (e) => {
+  const code = (e.target as HTMLSelectElement).value;
+  store(LANG_KEY, code);
+  setLocale(code);
+});
+onLocaleChange(() => {
+  translateShell();
+  renderMidi({ ...midi.status, error: undefined });
+  applyTheme(document.documentElement.dataset.theme ?? null);
+  renderAll();
+});
+
+/** Formats a number with the current locale's decimal separator. */
+const num = (v: number, digits: number) =>
+  v.toLocaleString(getLocale(), { minimumFractionDigits: digits, maximumFractionDigits: digits });
+
 // ------------------------------------------------------------------ pattern
 
-const KIND_LABEL = { pulse: 'PULSE', wave: 'WAVE', noise: 'NOISE' };
+const kindLabel = (k: 'pulse' | 'wave' | 'noise') => t(`kind.${k}`);
 const instKindOf = (ch: number) => CHANNEL_KINDS[ch];
 const instrumentsOf = (kind: 'pulse' | 'wave' | 'noise') =>
   kind === 'pulse' ? song.pulseInstruments : kind === 'wave' ? song.waveInstruments : song.noiseInstruments;
@@ -256,7 +289,7 @@ function renderOrderList() {
 
 function renderInstList() {
   const kind = instKindOf(cursor.ch);
-  $('inst-title').textContent = `${KIND_LABEL[kind]} INSTRUMENTS`;
+  $('inst-title').textContent = t('instList.title', { kind: kindLabel(kind) });
   $('inst-list').innerHTML = instrumentsOf(kind)
     .map((ins, i) => {
       const editing = tab === 'inst' && instKind === kind && instIndex === i ? ' class="editing"' : '';
@@ -274,7 +307,7 @@ function renderChannelHead() {
     '<span class="num"></span>' +
     CHANNEL_KINDS.map(
       (k, i) => `<div class="chan${muted[i] ? ' muted' : ''}" data-ch="${i}">
-        <div class="chan-title"><span>CH${i + 1} <span class="kind">${KIND_LABEL[k]}</span></span><button type="button" class="mute" aria-pressed="${muted[i]}" title="Mute channel ${i + 1}">M</button></div>
+        <div class="chan-title"><span>${t('channel.name', { n: i + 1 })} <span class="kind">${kindLabel(k)}</span></span><button type="button" class="mute" aria-pressed="${muted[i]}" title="${t('channel.mute', { n: i + 1 })}">M</button></div>
         <canvas></canvas>
       </div>`,
     ).join('');
@@ -547,11 +580,11 @@ function key(label: string, cls: string, data: string) {
 function renderKeypad() {
   const isNote = FIELDS[cursor.field] === 'note';
   const kind = keypadEl.dataset.kind;
-  const state = `${octave}/${pianoVisible}`;
+  const state = `${octave}/${pianoVisible}/${getLocale()}`;
   if (kind === (isNote ? 'note' : 'hex') && keypadEl.dataset.state === state) return;
   keypadEl.dataset.kind = isNote ? 'note' : 'hex';
   keypadEl.dataset.state = state;
-  const navRow = `<div class="row">${key('◀', 'action', 'data-act="prev" aria-label="Previous field"')}${key('▲', 'action', 'data-act="up" aria-label="Row up"')}${key('▼', 'action', 'data-act="down" aria-label="Row down"')}${key('▶', 'action', 'data-act="next" aria-label="Next field"')}</div>`;
+  const navRow = `<div class="row">${key('◀', 'action', `data-act="prev" aria-label="${t('keypad.prev')}"`)}${key('▲', 'action', `data-act="up" aria-label="${t('keypad.up')}"`)}${key('▼', 'action', `data-act="down" aria-label="${t('keypad.down')}"`)}${key('▶', 'action', `data-act="next" aria-label="${t('keypad.next')}"`)}</div>`;
   if (isNote) {
     const names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
     const keys = names.map((n, i) => key(n, n.includes('#') ? 'sharp' : '', `data-semi="${i}"`));
@@ -561,8 +594,8 @@ function renderKeypad() {
     keypadEl.innerHTML = `
       ${noteRows}
       <div class="row">
-        ${key('OCT−', 'action', 'data-act="oct-"')}${key('OCT+', 'action', 'data-act="oct+"')}
-        ${key('OFF', 'action', 'data-act="off"')}${key('DEL', 'red', 'data-act="del"')}
+        ${key(t('keypad.octDown'), 'action', 'data-act="oct-"')}${key(t('keypad.octUp'), 'action', 'data-act="oct+"')}
+        ${key(t('keypad.off'), 'action', 'data-act="off"')}${key(t('keypad.del'), 'red', 'data-act="del"')}
       </div>
       ${navRow}`;
   } else {
@@ -570,7 +603,7 @@ function renderKeypad() {
     keypadEl.innerHTML = `
       <div class="row">${keys.slice(0, 8).join('')}</div>
       <div class="row">${keys.slice(8).join('')}</div>
-      <div class="row">${key('DEL', 'red', 'data-act="del"')}</div>
+      <div class="row">${key(t('keypad.del'), 'red', 'data-act="del"')}</div>
       ${navRow}`;
   }
 }
@@ -693,12 +726,19 @@ renderPiano();
 const midi = new MidiInput();
 const midiHeld = new Set<number>();
 
+function midiTitle(s: MidiStatus) {
+  if (!s.supported) return t('midi.unsupported');
+  if (s.error) return s.error;
+  if (!s.enabled) return t('midi.title');
+  return t('midi.inputs', { inputs: s.inputs.join(', ') || t('midi.noInputs') });
+}
+
 function renderMidi(s: MidiStatus) {
   const b = $('midi');
   b.setAttribute('aria-pressed', String(s.enabled));
   b.textContent = s.enabled ? `MIDI ${s.inputs.length}` : 'MIDI';
-  b.title = s.error ?? (s.enabled ? `MIDI inputs: ${s.inputs.join(', ') || 'none connected'}` : 'Play and enter notes from a MIDI keyboard');
-  if (s.error) toast(s.error);
+  b.title = midiTitle(s);
+  if (s.error) toast(s.supported ? s.error : t('midi.unsupported'));
 }
 midi.onStatus = renderMidi;
 midi.onEvent = (e) => {
@@ -720,7 +760,7 @@ $('midi').addEventListener('click', () => {
     void midi.enable().then((s) => store(MIDI_KEY, s.enabled ? 'on' : 'off'));
   }
 });
-if (!midi.status.supported) $('midi').title = 'Web MIDI is not supported by this browser.';
+renderMidi({ ...midi.status, error: undefined });
 if (loadStored(MIDI_KEY) === 'on' && midi.status.supported) void midi.enable();
 
 // ---------------------------------------------------------------- toolbar
@@ -796,7 +836,7 @@ $('o-dup').addEventListener('click', () => {
   changed(true);
 });
 $('o-del').addEventListener('click', () => {
-  if (song.order.length <= 1) return toast('The last position cannot be deleted');
+  if (song.order.length <= 1) return toast(t('order.lastPosition'));
   song.order.splice(order, 1);
   order = Math.min(order, song.order.length - 1);
   changed(true);
@@ -910,50 +950,46 @@ function bindCheck(id: string, apply: (v: boolean) => void) {
 }
 
 function renderInstrumentPanel() {
-  const kinds = [
-    ['pulse', 'PULSE'],
-    ['wave', 'WAVE'],
-    ['noise', 'NOISE'],
-  ] as const;
+  const kinds = ['pulse', 'wave', 'noise'] as const;
   const list =
     instKind === 'pulse' ? song.pulseInstruments : instKind === 'wave' ? song.waveInstruments : song.noiseInstruments;
   const ins = list[instIndex];
-  let form = `<label for="i-name">Name</label><input type="text" id="i-name" value="${ins.name.replace(/"/g, '&quot;')}">`;
+  let form = `<label for="i-name">${t('inst.name')}</label><input type="text" id="i-name" value="${ins.name.replace(/"/g, '&quot;')}">`;
   if (instKind === 'pulse') {
     const p = song.pulseInstruments[instIndex];
-    form += `<label for="i-duty">Duty</label><select id="i-duty">${['12.5 %', '25 %', '50 %', '75 %'].map((d, i) => `<option value="${i}" ${p.duty === i ? 'selected' : ''}>${d}</option>`).join('')}</select>`;
-    form += slider('i-vol', 'Volume', p.volume, 0, 15);
-    form += check('i-up', 'Envelope up', p.envUp);
-    form += slider('i-env', 'Envelope period', p.envPeriod, 0, 7);
-    form += slider('i-len', 'Length (0 = off)', p.length, 0, 64);
-    form += `<label></label><div class="hint">Sweep only affects channel 1.</div>`;
-    form += slider('i-sp', 'Sweep period', p.sweepPeriod, 0, 7);
-    form += check('i-sn', 'Sweep down', p.sweepNegate);
-    form += slider('i-ss', 'Sweep shift', p.sweepShift, 0, 7);
+    form += `<label for="i-duty">${t('inst.duty')}</label><select id="i-duty">${['12.5 %', '25 %', '50 %', '75 %'].map((d, i) => `<option value="${i}" ${p.duty === i ? 'selected' : ''}>${d}</option>`).join('')}</select>`;
+    form += slider('i-vol', t('inst.volume'), p.volume, 0, 15);
+    form += check('i-up', t('inst.envUp'), p.envUp);
+    form += slider('i-env', t('inst.envPeriod'), p.envPeriod, 0, 7);
+    form += slider('i-len', t('inst.length'), p.length, 0, 64);
+    form += `<label></label><div class="hint">${t('inst.sweepHint')}</div>`;
+    form += slider('i-sp', t('inst.sweepPeriod'), p.sweepPeriod, 0, 7);
+    form += check('i-sn', t('inst.sweepDown'), p.sweepNegate);
+    form += slider('i-ss', t('inst.sweepShift'), p.sweepShift, 0, 7);
   } else if (instKind === 'wave') {
     const w = song.waveInstruments[instIndex];
-    form += slider('i-wave', 'Waveform', w.wave, 0, WAVE_COUNT - 1);
-    form += `<label for="i-wvol">Volume</label><select id="i-wvol">${['Mute', '100 %', '50 %', '25 %'].map((d, i) => `<option value="${i}" ${w.volume === i ? 'selected' : ''}>${d}</option>`).join('')}</select>`;
-    form += slider('i-len', 'Length (0 = off)', w.length, 0, 256);
+    form += slider('i-wave', t('inst.waveform'), w.wave, 0, WAVE_COUNT - 1);
+    form += `<label for="i-wvol">${t('inst.volume')}</label><select id="i-wvol">${[t('inst.waveMute'), '100 %', '50 %', '25 %'].map((d, i) => `<option value="${i}" ${w.volume === i ? 'selected' : ''}>${d}</option>`).join('')}</select>`;
+    form += slider('i-len', t('inst.length'), w.length, 0, 256);
   } else {
     const n = song.noiseInstruments[instIndex];
-    form += slider('i-vol', 'Volume', n.volume, 0, 15);
-    form += check('i-up', 'Envelope up', n.envUp);
-    form += slider('i-env', 'Envelope period', n.envPeriod, 0, 7);
-    form += slider('i-len', 'Length (0 = off)', n.length, 0, 64);
-    form += check('i-narrow', '7-bit noise', n.narrow);
+    form += slider('i-vol', t('inst.volume'), n.volume, 0, 15);
+    form += check('i-up', t('inst.envUp'), n.envUp);
+    form += slider('i-env', t('inst.envPeriod'), n.envPeriod, 0, 7);
+    form += slider('i-len', t('inst.length'), n.length, 0, 64);
+    form += check('i-narrow', t('inst.narrow'), n.narrow);
   }
   panelEl.innerHTML = `
-    <h2>INSTRUMENT</h2>
-    <div class="seg" role="group">${kinds.map(([k, l]) => `<button type="button" data-kind="${k}" aria-pressed="${instKind === k}">${l}</button>`).join('')}</div>
+    <h2>${t('inst.title')}</h2>
+    <div class="seg" role="group">${kinds.map((k) => `<button type="button" data-kind="${k}" aria-pressed="${instKind === k}">${kindLabel(k)}</button>`).join('')}</div>
     <div class="inst-grid" style="margin-top:8px">${Array.from({ length: INSTRUMENT_COUNT }, (_, i) => `<button type="button" data-i="${i}" aria-pressed="${i === instIndex}">${(i + 1).toString(16).toUpperCase()}</button>`).join('')}</div>
-    <h2>${instKind.toUpperCase()} ${(instIndex + 1).toString(16).toUpperCase()}</h2>
+    <h2>${t('inst.heading', { kind: kindLabel(instKind), n: (instIndex + 1).toString(16).toUpperCase() })}</h2>
     <div class="form">${form}</div>
     <div class="btn-row">
-      <button type="button" class="btn primary" id="i-test">▶ Test</button>
-      <button type="button" class="btn" id="i-use">Use for note entry</button>
+      <button type="button" class="btn primary" id="i-test">${t('inst.test')}</button>
+      <button type="button" class="btn" id="i-use">${t('inst.use')}</button>
     </div>
-    <p class="hint">Instruments belong to a channel type: channels 1 and 2 use PULSE, channel 3 WAVE, channel 4 NOISE.</p>`;
+    <p class="hint">${t('inst.hint')}</p>`;
 
   panelEl.querySelectorAll<HTMLButtonElement>('[data-kind]').forEach((b) =>
     b.addEventListener('click', () => {
@@ -1014,21 +1050,21 @@ function renderInstrumentPanel() {
   $('i-use').addEventListener('click', () => {
     instrument = instIndex;
     renderHeader();
-    toast(`Instrument ${(instIndex + 1).toString(16).toUpperCase()} selected`);
+    toast(t('inst.selected', { n: (instIndex + 1).toString(16).toUpperCase() }));
   });
 }
 
 function renderWavePanel() {
   const presets = Object.keys(WAVE_PRESETS);
   panelEl.innerHTML = `
-    <h2>WAVEFORM</h2>
+    <h2>${t('wave.title')}</h2>
     <div class="inst-grid">${Array.from({ length: WAVE_COUNT }, (_, i) => `<button type="button" data-w="${i}" aria-pressed="${i === waveIndex}">${i.toString(16).toUpperCase()}</button>`).join('')}</div>
-    <h2>WAVE ${waveIndex.toString(16).toUpperCase()} · 32 × 4 BIT</h2>
-    <canvas class="wave-canvas" id="wave-canvas" width="320" height="160" aria-label="Draw waveform"></canvas>
-    <div class="btn-row">${presets.map((p) => `<button type="button" class="btn" data-preset="${p}">${p}</button>`).join('')}</div>
-    <h2>HEX</h2>
-    <div class="form"><label for="w-hex">Data</label><input type="text" id="w-hex" spellcheck="false" maxlength="32"></div>
-    <p class="hint">Draw with mouse or finger. The wave is loaded on the next note; as on the hardware, the DAC is switched off briefly to do so.</p>`;
+    <h2>${t('wave.heading', { n: waveIndex.toString(16).toUpperCase() })}</h2>
+    <canvas class="wave-canvas" id="wave-canvas" width="320" height="160" aria-label="${t('wave.draw')}"></canvas>
+    <div class="btn-row">${presets.map((p) => `<button type="button" class="btn" data-preset="${p}">${t(`wave.preset.${p}` as MessageKey)}</button>`).join('')}</div>
+    <h2>${t('wave.hex')}</h2>
+    <div class="form"><label for="w-hex">${t('wave.data')}</label><input type="text" id="w-hex" spellcheck="false" maxlength="32"></div>
+    <p class="hint">${t('wave.hint')}</p>`;
   const wave = song.waves[waveIndex];
   const canvas = $<HTMLCanvasElement>('wave-canvas');
   const hexInput = $<HTMLInputElement>('w-hex');
@@ -1063,7 +1099,7 @@ function renderWavePanel() {
   hexInput.addEventListener('change', () => {
     const s = hexInput.value.replace(/[^0-9a-f]/gi, '');
     if (s.length !== 32) {
-      toast('Exactly 32 hex digits are required');
+      toast(t('wave.hexError'));
       draw();
       return;
     }
@@ -1087,27 +1123,27 @@ function renderWavePanel() {
 }
 
 function renderSongPanel() {
-  const bpm = (59.7275 * 60) / (song.speed * 4);
+  const bpm = (speed: number) => t('song.bpm', { bpm: num((59.7275 * 60) / (speed * 4), 1) });
   panelEl.innerHTML = `
-    <h2>SONG</h2>
+    <h2>${t('song.title')}</h2>
     <div class="form">
-      <label for="s-title">Title</label><input type="text" id="s-title">
-      <label for="s-author">Author</label><input type="text" id="s-author">
-      <label>Hardware</label>
+      <label for="s-title">${t('song.songTitle')}</label><input type="text" id="s-title">
+      <label for="s-author">${t('song.author')}</label><input type="text" id="s-author">
+      <label>${t('song.hardware')}</label>
       <div class="seg" role="group"><button type="button" data-model="dmg" aria-pressed="${song.model === 'dmg'}">DMG</button><button type="button" data-model="cgb" aria-pressed="${song.model === 'cgb'}">GBC</button></div>
-      ${slider('s-speed', 'Speed (ticks/row)', song.speed, 1, 31)}
-      <label></label><div class="hint" id="s-bpm">≈ ${bpm.toFixed(1)} BPM at 4 rows per beat</div>
+      ${slider('s-speed', t('song.speed'), song.speed, 1, 31)}
+      <label></label><div class="hint" id="s-bpm">${bpm(song.speed)}</div>
     </div>
-    <h2>PATTERN ${hex2(song.order[order])}</h2>
+    <h2>${t('song.pattern', { n: hex2(song.order[order]) })}</h2>
     <div class="btn-row" style="margin-top:0">
-      <button type="button" class="btn" id="p-new">New pattern</button>
-      <button type="button" class="btn" id="p-clone">Duplicate</button>
-      <button type="button" class="btn" id="p-clear">Clear</button>
-      <button type="button" class="btn" id="p-up">Channel +1 semitone</button>
-      <button type="button" class="btn" id="p-down">Channel −1 semitone</button>
-      <button type="button" class="btn" id="p-delrow">Delete row</button>
+      <button type="button" class="btn" id="p-new">${t('song.newPattern')}</button>
+      <button type="button" class="btn" id="p-clone">${t('song.duplicate')}</button>
+      <button type="button" class="btn" id="p-clear">${t('song.clear')}</button>
+      <button type="button" class="btn" id="p-up">${t('song.up')}</button>
+      <button type="button" class="btn" id="p-down">${t('song.down')}</button>
+      <button type="button" class="btn" id="p-delrow">${t('song.deleteRow')}</button>
     </div>
-    <div class="form" style="margin-top:10px">${check('s-follow', 'Follow playback', follow)}</div>`;
+    <div class="form" style="margin-top:10px">${check('s-follow', t('song.follow'), follow)}</div>`;
   const title = $<HTMLInputElement>('s-title');
   const author = $<HTMLInputElement>('s-author');
   title.value = song.title;
@@ -1129,7 +1165,7 @@ function renderSongPanel() {
   bindRange('s-speed', (v) => {
     song.speed = v;
     $('spd').textContent = String(v);
-    $('s-bpm').textContent = `≈ ${((59.7275 * 60) / (v * 4)).toFixed(1)} BPM at 4 rows per beat`;
+    $('s-bpm').textContent = bpm(v);
   });
   $('p-new').addEventListener('click', () => {
     song.patterns.push(emptyPattern());
@@ -1144,7 +1180,7 @@ function renderSongPanel() {
     changed(true);
   });
   $('p-clear').addEventListener('click', () => {
-    if (!confirm('Really clear this pattern?')) return;
+    if (!confirm(t('song.confirmClear'))) return;
     song.patterns[song.order[order]] = emptyPattern(pattern().rows.length);
     changed(true);
   });
@@ -1176,32 +1212,32 @@ const fileBase = () => (song.title || 'song').replace(/[^\w-]+/g, '_');
 
 function renderFilePanel() {
   panelEl.innerHTML = `
-    <h2>FILE</h2>
+    <h2>${t('file.title')}</h2>
     <div class="btn-row" style="margin-top:0">
-      <button type="button" class="btn" id="f-new">New</button>
-      <button type="button" class="btn" id="f-open">Open…</button>
-      <button type="button" class="btn primary" id="f-save">Save (.json)</button>
-      <button type="button" class="btn" id="f-demo">Load demo</button>
+      <button type="button" class="btn" id="f-new">${t('file.new')}</button>
+      <button type="button" class="btn" id="f-open">${t('file.open')}</button>
+      <button type="button" class="btn primary" id="f-save">${t('file.save')}</button>
+      <button type="button" class="btn" id="f-demo">${t('file.demo')}</button>
     </div>
     <input type="file" id="f-input" accept=".json,application/json" class="visually-hidden">
-    <p class="hint">The song is saved in the browser automatically.</p>
-    <h2>EXPORT</h2>
-    <div class="form">${slider('x-loops', 'Loops', 1, 1, 4)}</div>
+    <p class="hint">${t('file.autosave')}</p>
+    <h2>${t('export.title')}</h2>
+    <div class="form">${slider('x-loops', t('export.loops'), 1, 1, 4)}</div>
     <div class="btn-row">
-      <button type="button" class="btn primary" id="x-wav">Export WAV</button>
-      <button type="button" class="btn" id="x-vgm">Export VGM</button>
-      <button type="button" class="btn" id="x-gbs">Export GBS</button>
-      <button type="button" class="btn" id="x-rom">Game Boy ROM</button>
-      <button type="button" class="btn" id="x-gbdk">GBDK project (.zip)</button>
+      <button type="button" class="btn primary" id="x-wav">${t('export.wav')}</button>
+      <button type="button" class="btn" id="x-vgm">${t('export.vgm')}</button>
+      <button type="button" class="btn" id="x-gbs">${t('export.gbs')}</button>
+      <button type="button" class="btn" id="x-rom">${t('export.rom')}</button>
+      <button type="button" class="btn" id="x-gbdk">${t('export.gbdk')}</button>
     </div>
-    <p class="hint" id="x-status">ROM: runs on hardware and emulators (.gb, or .gbc for CGB songs). GBS and VGM play in music players. GBDK: C array of the register stream, a tiny C driver and a Makefile. More formats (XM, MOD, video) are on the roadmap.</p>`;
+    <p class="hint" id="x-status">${t('export.hint')}</p>`;
   const input = $<HTMLInputElement>('f-input');
   $('f-new').addEventListener('click', () => {
-    if (!confirm('Start a new song? The current song will be replaced.')) return;
+    if (!confirm(t('file.confirmNew'))) return;
     loadSong(createSong());
   });
   $('f-demo').addEventListener('click', () => {
-    if (!confirm('Load the demo? The current song will be replaced.')) return;
+    if (!confirm(t('file.confirmDemo'))) return;
     loadSong(demoSong());
   });
   $('f-open').addEventListener('click', () => input.click());
@@ -1210,9 +1246,9 @@ function renderFilePanel() {
     if (!file) return;
     try {
       loadSong(parseSong(JSON.parse(await file.text())));
-      toast(`Loaded “${song.title}”`);
+      toast(t('file.loaded', { title: song.title }));
     } catch (err) {
-      toast(`Could not load file: ${(err as Error).message}`);
+      toast(t('file.loadError', { error: (err as Error).message }));
     }
   });
   $('f-save').addEventListener('click', () =>
@@ -1227,10 +1263,10 @@ function renderFilePanel() {
       const loops = Number($<HTMLInputElement>('x-loops').value);
       const { left, right, sampleRate } = await renderSong(structuredClone(song), {
         loops,
-        onProgress: (s) => (status.textContent = `Rendering… ${s.toFixed(0)} s`),
+        onProgress: (s) => (status.textContent = t('export.rendering', { seconds: num(s, 0) })),
       });
       download(`${fileBase()}.wav`, encodeWav(left, right, sampleRate) as BlobPart, 'audio/wav');
-      status.textContent = `WAV ready (${(left.length / sampleRate).toFixed(1)} s).`;
+      status.textContent = t('export.wavReady', { seconds: num(left.length / sampleRate, 1) });
     } finally {
       btn.disabled = false;
     }
@@ -1243,7 +1279,7 @@ function renderFilePanel() {
     try {
       const { name, data } = build();
       download(name, data as BlobPart, 'application/octet-stream');
-      $('x-status').textContent = `${name}: ${data.length} bytes.`;
+      $('x-status').textContent = t('export.size', { name, bytes: data.length });
     } catch (err) {
       $('x-status').textContent = (err as Error).message;
     }
@@ -1257,51 +1293,37 @@ function renderFilePanel() {
   $('x-gbdk').addEventListener('click', () => {
     const { zip, name, size } = gbdkProject(structuredClone(song));
     download(`${name}_gbdk.zip`, zip as BlobPart, 'application/zip');
-    $('x-status').textContent = `GBDK project ready: ${size} bytes of song data.`;
+    $('x-status').textContent = t('export.gbdkReady', { bytes: size });
   });
 }
 
 function renderHelpPanel() {
-  const fx: [string, string][] = [
-    ['0xy', 'Arpeggio: note, +x, +y semitones per tick'],
-    ['1xx', 'Pitch up by xx per tick'],
-    ['2xx', 'Pitch down by xx per tick'],
-    ['3xx', 'Portamento to note, speed xx'],
-    ['4xy', 'Vibrato: speed x, depth y'],
-    ['5xx', 'Master volume (NR50)'],
-    ['7xx', 'Delay note by xx ticks'],
-    ['8xx', 'Panning (NR51)'],
-    ['9xx', 'Duty (pulse, 0–3) or waveform (wave)'],
-    ['Axy', 'Volume slide: x up, y down'],
-    ['Bxx', 'Jump to order position xx'],
-    ['Cxy', 'Volume x, envelope y (bit 3 = up)'],
-    ['Dxx', 'Pattern break, continue at row xx'],
-    ['Exx', 'Cut note after xx ticks'],
-    ['Fxx', 'Speed (ticks per row)'],
-  ];
-  const keys: [string, string][] = [
-    ['Z S X D C …', 'Notes, lower row (physical key positions: Y on QWERTZ), Q 2 W 3 E … upper row'],
-    ['1', 'Note off (===)'],
-    ['0–9, A–F', 'Values in instrument, volume and effect columns'],
-    ['Arrows, Tab', 'Move cursor, switch channel'],
-    ['Space', 'Play / stop song'],
-    ['Shift+Space', 'Loop pattern from cursor'],
-    ['Del / ⌫', 'Clear field'],
-    ['Ins', 'Insert row'],
-    ['[ / ]', 'Octave down / up (also numpad − / +)'],
+  const fx = ['0xy', '1xx', '2xx', '3xx', '4xy', '5xx', '7xx', '8xx', '9xx', 'Axy', 'Bxx', 'Cxy', 'Dxx', 'Exx', 'Fxx'].map(
+    (code): [string, string] => [code, t(`help.fx.${code[0]}` as MessageKey)],
+  );
+  const keys: [string, MessageKey][] = [
+    ['Z S X D C …', 'help.key.notes'],
+    ['1', 'help.key.noteOff'],
+    ['0–9, A–F', 'help.key.values'],
+    [t('help.keyName.arrows'), 'help.key.move'],
+    [t('help.keyName.space'), 'help.key.play'],
+    [t('help.keyName.shiftSpace'), 'help.key.loop'],
+    [t('help.keyName.del'), 'help.key.clear'],
+    [t('help.keyName.ins'), 'help.key.insert'],
+    ['[ / ]', 'help.key.octave'],
   ];
   const table = (rows: [string, string][]) =>
     `<table class="help-table">${rows.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('')}</table>`;
   panelEl.innerHTML = `
-    <h2>PATTERN COLUMNS</h2>
-    <div class="legend"><span class="f0">C-4 note</span><span class="f1">1 instrument</span><span class="f2">F volume</span><span class="f3">A effect</span><span class="f4">0F param</span></div>
-    <h2>KEYBOARD</h2>${table(keys)}
-    <h2>TOUCH</h2>
-    <p class="hint">Tap a field, then enter notes or hex values on the keypad. The arrow keys move the cursor. ▶ plays the song, ⟳ loops the pattern from the cursor, ■ stops.</p>
-    <h2>PIANO AND MIDI</h2>
-    <p class="hint">KEYS shows the piano (mouse or touch). On a note field a key enters the note, elsewhere it only plays it; sliding over the keys plays without entering. It starts at the current octave. MIDI connects all MIDI keyboards (Chrome, Edge, Firefox; not Safari). MIDI note 60 is C-4.</p>
-    <h2>EFFECTS</h2>${table(fx)}
-    <p class="hint">Sound is generated cycle-accurately from the Game Boy APU registers. One tick is one frame (≈ 59.73 Hz).</p>`;
+    <h2>${t('help.columns')}</h2>
+    <div class="legend"><span class="f0">C-4 ${t('help.col.note')}</span><span class="f1">1 ${t('help.col.instrument')}</span><span class="f2">F ${t('help.col.volume')}</span><span class="f3">A ${t('help.col.effect')}</span><span class="f4">0F ${t('help.col.param')}</span></div>
+    <h2>${t('help.keyboard')}</h2>${table(keys.map(([k, m]) => [k, t(m)]))}
+    <h2>${t('help.touch')}</h2>
+    <p class="hint">${t('help.touchHint')}</p>
+    <h2>${t('help.piano')}</h2>
+    <p class="hint">${t('help.pianoHint')}</p>
+    <h2>${t('help.effects')}</h2>${table(fx)}
+    <p class="hint">${t('help.footer')}</p>`;
 }
 
 function renderPanel() {

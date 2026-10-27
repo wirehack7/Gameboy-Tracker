@@ -294,6 +294,12 @@ button {
   letter-spacing: 0.08em;
 }
 
+select.pill-btn {
+  appearance: none;
+  cursor: pointer;
+  text-align: center;
+}
+
 .volume {
   font: 700 12px var(--mono);
 }

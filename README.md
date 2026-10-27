@@ -21,6 +21,7 @@ What comes next is in the [roadmap](ROADMAP.md).
 - Responsive: desktop with side lists, tablet two-column, phone with views and an on-screen keypad
 - On-screen piano (mouse, touch, glissando) and Web MIDI input from any connected keyboard
 - Master volume for playback
+- Interface in English, German, Spanish and French (picked from the browser language, switchable in the toolbar)
 
 ## Exports
 
@@ -61,6 +62,13 @@ npm run build   # production build into dist/
 ```
 
 Every push to `main` is tested, built and published to GitHub Pages by GitHub Actions.
+
+### Translations
+
+UI strings live in `src/i18n/locales/`. English (`en.ts`) is the base locale and defines every key;
+other locales may lag behind and fall back to English. To add a string, add a key to `en.ts` and use
+`t('key')` in code (or `data-i18n`, `data-i18n-title`, `data-i18n-aria-label` in static markup).
+To add a language, create `locales/<code>.ts` and register it in `LOCALES` in `src/i18n/index.ts`.
 
 ## Hardware coverage
 

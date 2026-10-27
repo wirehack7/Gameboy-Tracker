@@ -30,6 +30,7 @@ sounds right in the tracker sounds the same on hardware, in the exported ROM and
 - [Using the music in a GBDK game](#using-the-music-in-a-gbdk-game)
 - [Tips and hardware quirks](#tips-and-hardware-quirks)
 - [About and the mini game](#about-and-the-mini-game)
+- [Privacy](#privacy)
 - [Not available yet](#not-available-yet)
 
 ## Quick start
@@ -793,6 +794,14 @@ code and this manual. It also holds a tiny Game Boy style jump'n'run: jump over 
 can, the screen gets faster over time. Press **Space**, **↑**, **X** or **Z**, tap the screen or press the red
 **A** button to jump. Your best score is kept in the browser. **Esc**, the **✕** button or a click outside the
 window closes it; while it is open, keys do not reach the tracker.
+
+## Privacy
+
+Songs, instruments and the library never leave your device: they are kept in this browser's storage only, and
+song files are never uploaded. The public site may count visits and which features are used (for example play,
+export formats, import, theme and language) with a privacy-friendly analytics service. If your browser sends
+**Do Not Track** or **Global Privacy Control**, no analytics is loaded at all. The installed app also works
+offline without it.
 
 ## Not available yet
 

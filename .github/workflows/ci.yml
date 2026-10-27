@@ -9,10 +9,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 22
+          node-version: 24.22.1
           cache: npm
       - run: npm ci
       - name: Install GBDK-2020 (compiles the exported C code in the tests)
@@ -36,7 +36,7 @@ jobs:
     # apt mirrors or the browser CDN. Keep its tag at the playwright version in package.json.
     # The runner's user (1001) owns the workspace; Firefox also refuses to run as root.
     container:
-      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
       options: --user 1001 --ipc=host
     # A hung browser must fail the run, not hold it for hours.
     timeout-minutes: 15
@@ -45,15 +45,15 @@ jobs:
       matrix:
         browser: [chromium, firefox, webkit]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 22
+          node-version: 24.22.1
           cache: npm
       - run: npm ci
       - run: npm run build
       - run: npm run smoke -- smoke-screenshots --${{ matrix.browser }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: smoke-screenshots-${{ matrix.browser }}

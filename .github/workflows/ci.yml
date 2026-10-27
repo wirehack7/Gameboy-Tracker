@@ -53,7 +53,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run smoke -- smoke-screenshots --${{ matrix.browser }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: smoke-screenshots-${{ matrix.browser }}

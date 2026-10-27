@@ -163,6 +163,7 @@ export const de: Translation = {
   'export.gbdkReady': 'GBDK-Projekt fertig: {bytes} Bytes Songdaten.',
 
   // help panel
+  'help.manual': 'Vollständiges Handbuch öffnen (Englisch) ↗',
   'help.columns': 'PATTERN-SPALTEN',
   'help.col.note': 'Note',
   'help.col.instrument': 'Instrument',

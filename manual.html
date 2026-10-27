@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content="Manual of GB Tracker, a Game Boy music tracker for the browser: pattern editing, instruments, effects, DMG and GBC, exports and GBDK usage" />
+    <meta name="theme-color" content="#d6d2c8" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#232326" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='2' y='0' width='12' height='16' rx='2' fill='%23d6d2c8' stroke='%23555' /%3E%3Crect x='4' y='2' width='8' height='6' fill='%238bac0f'/%3E%3Ccircle cx='11' cy='11' r='1.5' fill='%23a3224f'/%3E%3C/svg%3E" />
+    <title>GB Tracker Manual</title>
+  </head>
+  <body>
+    <header class="m-bar">
+      <a class="m-brand" href="./"><span class="led"></span>GB TRACKER<span>MANUAL</span></a>
+      <button type="button" class="m-pill" id="m-menu" aria-controls="m-nav" aria-expanded="false">CONTENTS</button>
+      <span class="m-spacer"></span>
+      <a class="m-pill red" href="./"><span class="m-long">OPEN </span>TRACKER</a>
+      <button type="button" class="m-pill" id="m-theme"></button>
+    </header>
+    <div class="m-layout">
+      <nav class="m-nav" id="m-nav" aria-label="Contents">
+        <h2>CONTENTS</h2>
+        <ol><!-- manual:nav --></ol>
+      </nav>
+      <main class="m-doc">
+        <!-- manual:body -->
+      </main>
+    </div>
+    <script type="module" src="/src/manual/main.ts"></script>
+  </body>
+</html>

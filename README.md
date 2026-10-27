@@ -6,6 +6,8 @@ oscillators. What the tracker plays are the same register writes a sound driver 
 
 **Live:** https://wirehack7.github.io/Gameboy-Tracker/
 
+**Manual:** [docs/MANUAL.md](docs/MANUAL.md), also on the site: https://wirehack7.github.io/Gameboy-Tracker/manual.html
+
 What comes next is in the [roadmap](ROADMAP.md).
 
 ## Features
@@ -69,6 +71,12 @@ UI strings live in `src/i18n/locales/`. English (`en.ts`) is the base locale and
 other locales may lag behind and fall back to English. To add a string, add a key to `en.ts` and use
 `t('key')` in code (or `data-i18n`, `data-i18n-title`, `data-i18n-aria-label` in static markup).
 To add a language, create `locales/<code>.ts` and register it in `LOCALES` in `src/i18n/index.ts`.
+
+### Manual
+
+The manual is written in `docs/MANUAL.md`; the build renders it into `manual.html` on the site
+(`src/manual/`). `tests/docs/manual.test.ts` fails when an effect, export button or tab is missing from the
+manual, so update it in the same PR as the feature.
 
 ## Hardware coverage
 

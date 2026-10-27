@@ -165,6 +165,7 @@ export const en = {
   'export.gbdkReady': 'GBDK project ready: {bytes} bytes of song data.',
 
   // help panel
+  'help.manual': 'Open the full manual ↗',
   'help.columns': 'PATTERN COLUMNS',
   'help.col.note': 'note',
   'help.col.instrument': 'instrument',

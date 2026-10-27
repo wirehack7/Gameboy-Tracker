@@ -6,6 +6,7 @@
  * envelopes and length counters cannot be expressed in MOD, so they are
  * rendered into the sample (exact at the instrument's most common note).
  */
+import { hasMacros } from '../tracker/macro';
 import { noteFrequency } from '../tracker/notes';
 import { Song } from '../tracker/song';
 import {
@@ -204,6 +205,7 @@ export function encodeMod(song: Song): { data: Uint8Array; warnings: string[] } 
       continue;
     }
     const ins = l.ref.kind === 'pulse' ? song.pulseInstruments[l.ref.index] : l.ref.kind === 'wave' ? song.waveInstruments[l.ref.index] : song.noiseInstruments[l.ref.index];
+    if (hasMacros(ins.macros)) warn.add('instrument macros');
     text(`${l.ref.kind[0].toUpperCase()}${(l.ref.index + 1).toString(16).toUpperCase()} ${ins.name}`, 22);
     u16be(s.data.length / 2);
     out.push(l.finetune & 15, instrumentVolume(song, l.ref));

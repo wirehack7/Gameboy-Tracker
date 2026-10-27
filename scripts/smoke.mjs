@@ -11,6 +11,7 @@
  * - typing notes on the computer keyboard and tapping the on-screen piano and keypad change the song,
  *   and the song survives a reload (localStorage);
  * - undo/redo, block selection (keys and mouse), copy/paste and transpose change the pattern as expected;
+ * - instrument macros can be typed, show as bars, are saved, and the instrument panel fits a phone;
  * - the song library saves (button and Ctrl+S), saves as, renames, duplicates, deletes and opens songs,
  *   keeps them across a reload (IndexedDB), and its ZIP backup imports again;
  * - every export (song JSON, WAV, FLAC, stems, VGM, GBS, ROM, XM, MOD, GBDK zip) hands over a file with the right
@@ -334,6 +335,32 @@ await check('undo/redo, block selection, copy/paste and transpose', async () => 
     assert(errors.length === 0, `errors: ${errors.join(' | ')}`);
   } finally {
     await context.close();
+  }
+});
+
+await check('instrument macros: typed, drawn as bars, saved, fit a phone', async () => {
+  const phoneScreen = screens.find((s) => s.hasTouch && (s.viewport?.width ?? 0) < 760);
+  for (const screen of [desktop, phoneScreen].filter(Boolean)) {
+    const { context, page, errors } = await open(screen);
+    try {
+      if (screen.hasTouch) await page.locator('.mobile-nav [data-view="edit"]').tap();
+      await page.locator('.tabs [data-tab="inst"]').click();
+      const input = page.locator('#i-m-volume');
+      await input.fill('15 12 9 | 6 3 99');
+      assert((await page.locator('#i-mg-volume rect').count()) === 6, `${screen.name}: the volume macro shows no 6 bars`);
+      assert((await page.locator('#i-mg-volume rect.loop').count()) === 3, `${screen.name}: the loop part is not marked`);
+      await input.press('Tab');
+      assert((await input.inputValue()) === '15 12 9 | 6 3 15', `${screen.name}: cleaned-up text is ${await input.inputValue()}`);
+      const saved = JSON.parse(await storedSong(page));
+      const macro = saved.pulseInstruments[0].macros.volume;
+      assert(macro.steps.join() === '15,12,9,6,3,15' && macro.loop === 3, `${screen.name}: saved ${JSON.stringify(macro)}`);
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      assert(overflow <= 1, `${screen.name}: the instrument panel scrolls sideways by ${overflow}px`);
+      if (shots) await page.screenshot({ path: join(shots, `${engine}-${screen.name}-macros.png`) });
+      assert(errors.length === 0, `errors: ${errors.join(' | ')}`);
+    } finally {
+      await context.close();
+    }
   }
 });
 

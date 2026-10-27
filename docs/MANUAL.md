@@ -365,6 +365,39 @@ The pitch of the noise comes from the note in the pattern (see
 [Channels](#channels-and-the-game-boy-sound-hardware)). Typical settings: kick around C-3 to C-4 with a short
 decay, snare and hi-hat at higher notes with a very short decay.
 
+### Macros
+
+Every instrument has four **macros**: tables that change the sound once per tick (60 times a second) while a
+note plays, like the tables in LSDJ or the sequences in FamiTracker. Type one number per tick, separated by
+spaces; the bar graph under the field shows the table. Put **|** before the step the macro loops back to.
+Without **|**, the last step holds until the note ends. An empty field turns the macro off.
+
+| Macro | Values | What it does |
+| --- | --- | --- |
+| Volume | 0–15 | Scales the note's volume (15 = full, 0 = silent). Replaces the hardware envelope while it is on. |
+| Arpeggio | −48 to 48 | Semitones added to the note: `0 4 7 \| 0 4 7` keeps cycling a major chord. Also changes the noise pitch. |
+| Pitch | −128 to 127 | Added to the period register; + is higher. `0 -40 -80 -120` drops like a kick drum. Not on noise. |
+| Duty / Waveform / 7-bit noise | 0–3, 0–F, 0–1 | Pulse: the duty cycle (12.5, 25, 50, 75 %). Wave: the waveform. Noise: 7-bit (1) or 15-bit (0). |
+
+A macro starts over with every new note. A volume in the volume column or a `Cxy` effect does not restart it;
+the macro volume is then scaled by that volume. Macros work on top of the effects, so a slide or a `0xy`
+arpeggio still applies.
+
+What the hardware does with each change:
+
+- **Duty** is written to NR11/NR21 and takes effect at once, without restarting the note.
+- **Arpeggio and pitch** are written to the period registers (NRx3/NRx4) without a trigger, as with slides.
+- **Wave channel volume** is written to NR32 and also changes without a restart.
+- **Pulse and noise volume** need a retrigger: NRx2 only takes effect when the channel restarts. The tracker
+  retriggers only when the value changes, as Game Boy drivers do. A restart also resets the length counter and
+  channel 1's sweep.
+- **Waveform** changes turn the wave channel off, load the new waveform into wave RAM and restart it. On the DMG,
+  wave RAM may not be written while the channel plays.
+- **7-bit noise** is written to NR43 with the next pitch write, without a restart.
+
+Every export that plays the song through the Game Boy driver (ROM, GBS, VGM, GBDK, WAV, FLAC, Opus, video)
+includes the macros. XM and MOD leave them out; the export lists them under its warnings.
+
 ## Waveforms
 
 The **WAVE** tab edits the 16 waveforms (0–F) for the wave channel. A waveform has 32 samples with 16 levels
@@ -766,7 +799,6 @@ window closes it; while it is open, keys do not reach the tracker.
 These are planned and listed in the [roadmap](https://github.com/wirehack7/Gameboy-Tracker/blob/main/ROADMAP.md):
 
 - XM and MOD import
-- Instrument macros (per-tick tables)
 
 This manual is updated together with the tracker. Found a mistake or something missing? Open an issue at
 https://github.com/wirehack7/Gameboy-Tracker/issues.

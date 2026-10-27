@@ -160,7 +160,7 @@ button {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 16px;
+  gap: 8px 12px;
   padding: 8px 12px;
   background: var(--surface);
   border-bottom: 3px solid var(--stripe-a);
@@ -279,8 +279,14 @@ button {
   padding: 2px 6px;
 }
 
-.spacer {
-  flex: 1;
+/* Right-hand controls stay together when the toolbar wraps. */
+.toolbar-end {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px 12px;
 }
 
 .pill-btn {
@@ -305,7 +311,7 @@ select.pill-btn {
 }
 
 .volume input {
-  width: 110px;
+  width: 90px;
   accent-color: var(--accent);
 }
 
@@ -1010,6 +1016,22 @@ select.pill-btn {
   .toolbar {
     gap: 6px 10px;
     padding: 6px 10px;
+  }
+
+  .toolbar-end {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 6px 10px;
+  }
+
+  /* Buttons on one row, the volume slider on a full-width row below. */
+  .toolbar-end .volume {
+    order: 1;
+    flex: 1 0 100%;
+  }
+
+  .toolbar-end .volume input {
+    flex: 1;
   }
 
   .brand h1 span {

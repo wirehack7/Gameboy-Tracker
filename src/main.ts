@@ -134,12 +134,13 @@ app.innerHTML = `
       ${stepper('spd', 'field.spd', 'field.spdTitle')}
       <span class="field"><output class="badge" id="model"></output></span>
     </div>
-    <div class="spacer"></div>
-    <button class="pill-btn" id="piano-toggle" type="button" data-i18n-title="piano.toggleTitle" data-i18n="piano.toggle"></button>
-    <button class="pill-btn" id="midi" type="button"></button>
-    <label class="field volume" data-i18n-title="volume.title"><span data-i18n="volume.label"></span> <input type="range" id="vol" min="0" max="100" step="1"><output id="vol-out"></output></label>
-    <select class="pill-btn lang" id="lang" data-i18n-title="language.title" data-i18n-aria-label="language.title">${LOCALES.map((l) => `<option value="${l.code}" lang="${l.code}">${l.name}</option>`).join('')}</select>
-    <button class="pill-btn" id="theme" type="button"></button>
+    <div class="toolbar-end">
+      <button class="pill-btn" id="piano-toggle" type="button" data-i18n-title="piano.toggleTitle" data-i18n="piano.toggle"></button>
+      <button class="pill-btn" id="midi" type="button"></button>
+      <label class="field volume" data-i18n-title="volume.title"><span data-i18n="volume.label"></span> <input type="range" id="vol" min="0" max="100" step="1"><output id="vol-out"></output></label>
+      <select class="pill-btn lang" id="lang" data-i18n-title="language.title" data-i18n-aria-label="language.title">${LOCALES.map((l) => `<option value="${l.code}" lang="${l.code}" title="${l.name}">${l.code.toUpperCase()}</option>`).join('')}</select>
+      <button class="pill-btn" id="theme" type="button"></button>
+    </div>
   </header>
   <div class="workspace">
     <aside class="sidebar left" data-i18n-aria-label="layout.lists">

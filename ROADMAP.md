@@ -41,7 +41,8 @@ published to GitHub Pages automatically after merging. Finished items are ticked
 - [ ] XM/MOD import where it maps sensibly
 
 ## Phase 6 – Audio and video
-- [ ] More audio formats (e.g. OGG/MP3 via the browser, stems per channel)
+- [x] More audio formats: FLAC (lossless) and stems (one WAV per channel)
+- [ ] Compressed audio (Opus/MP3) via WebCodecs, together with the video export
 - [ ] Video export with oscilloscopes and scrolling patterns (WebM via MediaRecorder/WebCodecs)
 
 ## Phase 7 – Comfort

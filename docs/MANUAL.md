@@ -470,6 +470,8 @@ song. Tests in the repository check this sample for sample.
 | Export | File | Use it for |
 | --- | --- | --- |
 | Export WAV | `.wav` | Audio: 16-bit stereo, rendered by the emulator. The **Loops** slider sets how many times the song is played (1–4). |
+| Export FLAC | `.flac` | The same audio, lossless and about half the size of the WAV. Decodes to exactly the WAV's samples. |
+| Export stems | `<name>_stems.zip` | One WAV per channel (`_ch1_pulse.wav` … `_ch4_noise.wav`), each with the other three channels muted, for mixing in a DAW. Together they add up to the full mix. |
 | Export VGM | `.vgm` | Video game music players such as VGMPlay, or foobar2000 and Winamp with a VGM plugin. VGM 1.71 with the Game Boy DMG chip, loop point, and title/author tags. |
 | Export GBS | `.gbs` | Game Boy music players (GBS v1). Title and author are in the header. |
 | Game Boy ROM | `.gb` / `.gbc` | Playing on a real Game Boy (flash cart), on a Game Boy Color, or in an emulator. |

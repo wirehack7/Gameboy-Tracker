@@ -10,7 +10,7 @@
  *   and on phones the bottom bar switches between the pattern, list and editor views;
  * - typing notes on the computer keyboard and tapping the on-screen piano and keypad change the song,
  *   and the song survives a reload (localStorage);
- * - every export (song JSON, WAV, VGM, GBS, ROM, GBDK zip) hands over a file with the right
+ * - every export (song JSON, WAV, FLAC, stems, VGM, GBS, ROM, XM, MOD, GBDK zip) hands over a file with the right
  *   header;
  * - the theme button cycles auto, light and dark;
  * - German, Spanish and French browsers get their UI language, still without sideways scrolling;
@@ -291,9 +291,13 @@ const NINTENDO_LOGO = Buffer.from('CEED6666CC0D000B03730083000C000D0008111F88890
 const exports = [
   ['f-save', /\.gbt\.json$/, (b) => typeof JSON.parse(b.toString('utf8')).patterns === 'object'],
   ['x-wav', /\.wav$/, (b) => b.subarray(0, 4).toString('latin1') === 'RIFF' && b.subarray(8, 12).toString('latin1') === 'WAVE' && b.length > 10000],
+  ['x-flac', /\.flac$/, (b) => b.subarray(0, 4).toString('latin1') === 'fLaC' && b.length > 5000],
+  ['x-stems', /_stems\.zip$/, (b) => b.subarray(0, 2).toString('latin1') === 'PK' && b.includes('_ch4_noise.wav')],
   ['x-vgm', /\.vgm$/, (b) => b.subarray(0, 4).toString('latin1') === 'Vgm '],
   ['x-gbs', /\.gbs$/, (b) => b.subarray(0, 3).toString('latin1') === 'GBS'],
   ['x-rom', /\.gbc?$/, (b) => b.subarray(0x104, 0x134).equals(NINTENDO_LOGO)],
+  ['x-xm', /\.xm$/, (b) => b.subarray(0, 17).toString('latin1') === 'Extended Module: '],
+  ['x-mod', /\.mod$/, (b) => b.subarray(1080, 1084).toString('latin1') === 'M.K.'],
   ['x-gbdk', /\.zip$/, (b) => b.subarray(0, 2).toString('latin1') === 'PK'],
 ];
 

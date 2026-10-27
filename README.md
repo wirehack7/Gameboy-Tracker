@@ -18,7 +18,7 @@ What comes next is in the [roadmap](ROADMAP.md).
 - DMG or GBC mode per song
 - Oscilloscope per channel, click to mute
 - Save as JSON, automatic backup in the browser
-- Exports: playable Game Boy ROM (.gb/.gbc), GBS, XM, MOD, VGM, WAV, and a GBDK-2020 project (C array + tiny driver + Makefile)
+- Exports: playable Game Boy ROM (.gb/.gbc), GBS, XM, MOD, VGM, WAV, FLAC, per-channel stems, and a GBDK-2020 project (C array + tiny driver + Makefile)
 - Full-window tracker layout in Game Boy colours (off-white, A/B-button red) with colour-coded pattern columns, light and dark mode
 - Responsive: desktop with side lists, tablet two-column, phone with views and an on-screen keypad
 - On-screen piano (mouse, touch, glissando) and Web MIDI input from any connected keyboard
@@ -44,6 +44,8 @@ the tests check.
 - **GBS:** Game Boy Sound System v1 for music players (VBlank rate). Same driver as the ROM.
 - **VGM:** VGM 1.71 with the Game Boy DMG chip, including loop point and GD3 tags.
 - **WAV:** 16-bit stereo, rendered by the emulator.
+- **FLAC:** the same audio, lossless (own encoder, checked bit for bit against ffmpeg).
+- **Stems:** one WAV per channel in a ZIP.
 
 Stream format used by the C driver:
 

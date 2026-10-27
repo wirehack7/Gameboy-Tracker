@@ -37,6 +37,8 @@ export interface RenderOptions {
   /** Seconds of tail after the end. */
   tail?: number;
   onProgress?: (seconds: number) => void;
+  /** Channels to leave out (for stems). */
+  muted?: readonly boolean[];
 }
 
 /** Render a song to stereo buffers. Yields to the event loop between chunks. */
@@ -45,6 +47,7 @@ export async function renderSong(song: Song, opts: RenderOptions = {}) {
   const loops = opts.loops ?? 1;
   const maxFrames = (opts.maxSeconds ?? 600) * sampleRate;
   const engine = new Engine(song, sampleRate);
+  opts.muted?.forEach((m, i) => (engine.apu.muted[i] = m));
   engine.play(0, 0);
   const chunk = 512;
   const chunksL: Float32Array[] = [];
@@ -79,4 +82,14 @@ export async function renderSong(song: Song, opts: RenderOptions = {}) {
     o += c.length;
   });
   return { left, right, sampleRate };
+}
+
+/** One render per channel with the others muted: the stems add up to the full mix. */
+export async function renderStems(song: Song, opts: RenderOptions = {}) {
+  const stems = [];
+  for (let ch = 0; ch < 4; ch++) {
+    const muted = [0, 1, 2, 3].map((i) => i !== ch);
+    stems.push(await renderSong(structuredClone(song), { ...opts, muted }));
+  }
+  return stems;
 }

@@ -59,5 +59,8 @@ describe('on-screen piano', () => {
     expect(pianoOctaves(320)).toBe(1);
     expect(pianoOctaves(700)).toBe(3);
     expect(pianoOctaves(5000)).toBe(4);
+    // Touch: wider keys, one octave on a phone, so each white key is ~48 px.
+    expect(pianoOctaves(390, 46)).toBe(1);
+    expect(pianoOctaves(1024, 46)).toBe(3);
   });
 });

@@ -146,6 +146,7 @@ export const es: Translation = {
   'export.gbdkReady': 'Proyecto GBDK listo: {bytes} bytes de datos de la canción.',
 
   // help panel
+  'help.manual': 'Abrir el manual completo (en inglés) ↗',
   'help.columns': 'COLUMNAS DEL PATRÓN',
   'help.col.note': 'nota',
   'help.col.instrument': 'instrumento',

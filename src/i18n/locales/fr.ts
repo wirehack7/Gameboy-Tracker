@@ -145,6 +145,7 @@ export const fr: Translation = {
   'export.gbdkReady': 'Projet GBDK prêt : {bytes} octets de données.',
 
   // help panel
+  'help.manual': 'Ouvrir le manuel complet (en anglais) ↗',
   'help.columns': 'COLONNES DU PATTERN',
   'help.col.note': 'note',
   'help.col.instrument': 'instrument',

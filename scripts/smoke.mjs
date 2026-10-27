@@ -301,6 +301,13 @@ await check('scopes sit above their pattern columns on high-density phones', asy
             dpr: devicePixelRatio,
           };
         });
+      // The pixel fonts swap in once loaded and resize the header; measure after that and after a redraw.
+      await page.evaluate(async () => {
+        await Promise.all(['20px VT323', '10px Silkscreen'].map((f) => document.fonts.load(f)));
+        await document.fonts.ready;
+        // Headless WebKit runs animation frames rarely: let the scopes redraw at the new size first.
+        for (let i = 0; i < 2; i++) await new Promise((r) => requestAnimationFrame(r));
+      });
       await page.waitForTimeout(300);
       const first = await layout();
       await page.waitForTimeout(700);
@@ -314,7 +321,10 @@ await check('scopes sit above their pattern columns on high-density phones', asy
         later.buffers.every(([w, css]) => css > 20 && w <= Math.ceil(css * later.dpr) + 1),
         `${screen.name}: scope buffers ${later.buffers.map((b) => b.join('/')).join(' ')} at ${later.dpr}x`,
       );
-      assert(JSON.stringify(first) === JSON.stringify(later), `${screen.name}: the header keeps changing size`);
+      assert(
+        JSON.stringify(first) === JSON.stringify(later),
+        `${screen.name}: the header keeps changing size (${JSON.stringify(first)} -> ${JSON.stringify(later)})`,
+      );
       assert(errors.length === 0, `errors: ${errors.join(' | ')}`);
     } finally {
       await context.close();

@@ -1,3 +1,5 @@
+import '@fontsource/silkscreen/400.css';
+import '@fontsource/vt323/400.css';
 import '../theme.css';
 import './manual.css';
 

@@ -78,9 +78,10 @@ button {
   border-radius: 999px;
   background: var(--pill);
   color: var(--pill-ink);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font: 400 10px var(--pixel);
+  letter-spacing: 0.1em;
+  line-height: 18px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 2px 0 var(--pill-lo);
   text-decoration: none;
   white-space: nowrap;
 }
@@ -88,6 +89,7 @@ button {
 .m-pill.red {
   background: var(--accent);
   color: var(--accent-ink);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 2px 0 var(--accent-lo);
 }
 
 #m-menu {
@@ -119,9 +121,9 @@ button {
 
 .m-nav h2 {
   margin: 0 0 8px;
-  font-size: 12px;
-  letter-spacing: 0.15em;
-  color: var(--ink-soft);
+  font: 400 10px var(--pixel);
+  letter-spacing: 0.16em;
+  color: var(--navy);
 }
 
 .m-nav ol {
@@ -166,9 +168,11 @@ button {
 
 .m-doc h2 {
   margin: 48px 0 12px;
-  padding-bottom: 6px;
-  font-size: 24px;
-  border-bottom: 2px solid var(--accent);
+  padding-bottom: 8px;
+  font: 400 20px / 1.3 var(--pixel);
+  letter-spacing: 0.02em;
+  border-bottom: 5px solid transparent;
+  border-image: linear-gradient(var(--stripe-a) 0 2px, transparent 2px 3px, var(--stripe-b) 3px 5px) 0 0 100% / 0 0 5px;
 }
 
 .m-doc h3 {
@@ -201,22 +205,24 @@ button {
   border-radius: 4px;
   background: var(--surface-2);
   font-family: var(--mono);
-  font-size: 0.88em;
+  font-size: 1.15em;
 }
 
 .m-doc pre {
   overflow-x: auto;
   padding: 12px 14px;
   border-radius: 8px;
-  background: var(--lcd-bg);
-  color: var(--lcd-ink);
-  line-height: 1.4;
+  background: var(--pat-bg);
+  color: var(--lcd-text);
+  border: 6px solid var(--bezel);
+  border-radius: 8px 8px 24px 8px;
+  line-height: 1.2;
 }
 
 .m-doc pre code {
   padding: 0;
   background: none;
-  font-size: 14px;
+  font-size: 18px;
 }
 
 .m-doc img {
@@ -259,7 +265,6 @@ button {
 /* Effect codes and keys in the first column read like the pattern view. */
 .m-doc td:first-child code {
   color: var(--c-fx);
-  font-weight: 700;
 }
 
 /* ------------------------------------------------------------------ phones */

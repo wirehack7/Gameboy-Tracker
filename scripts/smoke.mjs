@@ -56,6 +56,7 @@ const screens =
         { name: 'phone', viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true },
         { name: 'phone-landscape', viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true },
         { name: 'small-phone', viewport: { width: 320, height: 568 }, hasTouch: true, isMobile: true },
+        { name: 'short-phone-landscape', viewport: { width: 734, height: 343 }, hasTouch: true, isMobile: true },
       ];
 
 const failures = [];
@@ -166,6 +167,8 @@ for (const screen of screens) {
         // Put the cursor on row 00, channel 1, note field, clear it, then tap E and DEL.
         await press(page, page.locator('#pattern .prow[data-row="0"] [data-ch="0"][data-f="0"]'), touch);
         assert(await page.locator('#keypad').isVisible(), 'the keypad is not shown');
+        const rows = await page.locator('#pattern').evaluate((el) => el.clientHeight);
+        assert(rows >= 64, `the keypad leaves the pattern only ${rows}px`);
         await press(page, page.locator('#keypad [data-act="del"]'), touch);
         await press(page, page.locator('#keypad [data-act="up"]'), touch);
         assert((await note()) === '···', `row 00 still shows ${await note()} after DEL`);

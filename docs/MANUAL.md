@@ -20,6 +20,7 @@ sounds right in the tracker sounds the same on hardware, in the exported ROM and
 - [Song structure: order list and patterns](#song-structure-order-list-and-patterns)
 - [Instruments](#instruments)
 - [Waveforms](#waveforms)
+- [Samples](#samples)
 - [Effects](#effects)
 - [Speed and tempo](#speed-and-tempo)
 - [DMG and Game Boy Color mode](#dmg-and-game-boy-color-mode)
@@ -28,6 +29,7 @@ sounds right in the tracker sounds the same on hardware, in the exported ROM and
 - [Exporting](#exporting)
 - [Using the music in a GBDK game](#using-the-music-in-a-gbdk-game)
 - [Tips and hardware quirks](#tips-and-hardware-quirks)
+- [About and the mini game](#about-and-the-mini-game)
 - [Not available yet](#not-available-yet)
 
 ## Quick start
@@ -43,7 +45,8 @@ sounds right in the tracker sounds the same on hardware, in the exported ROM and
 4. Change the current octave with `[` and `]`, the instrument with the **INS** arrows in the toolbar.
 5. Open the **INSTR** tab on the right to shape the sound, **FILE** to save your song or export it.
 
-Your work is saved in the browser automatically after every change.
+Your work in progress is kept in the browser after every change. Press **Save** in the FILE tab (or `Ctrl+S`)
+to put the song into your song library, where you can keep as many songs as you like.
 
 ## The screen
 
@@ -91,7 +94,7 @@ Your work is saved in the browser automatically after every change.
 | INSTR | Instrument editor. |
 | WAVE | Waveform editor for the wave channel. |
 | SONG | Title, author, DMG/GBC, speed, pattern tools, follow playback. |
-| FILE | New, open, save, demo and all exports. |
+| FILE | The song library (new, save, open, rename, duplicate, delete), import, backups and all exports. |
 | HELP | Short reference of keys and effects, and a link to this manual. |
 
 On tablets the layout switches to two columns, on phones to separate views (see
@@ -200,9 +203,11 @@ the upper row starts one octave higher (`Q` = C, `2` = C#, … `P` = E two octav
 | `Insert` | Insert an empty row in the current channel |
 | `[` or Numpad `−` | Octave down |
 | `]` or Numpad `+` | Octave up |
+| `Ctrl+S` / `⌘S` | Save the song in the library |
 
 Shortcuts are ignored while a text field (song title, instrument name, …) has the focus, and when `Ctrl`, `Alt`
-or `Cmd` is held, so browser shortcuts keep working.
+or `Cmd` is held, so browser shortcuts keep working. `Ctrl+S` (`⌘S` on a Mac) is the exception: it always saves
+the song in the library instead of saving the web page.
 
 ## Touch and phone use
 
@@ -316,6 +321,7 @@ range silence the channel, exactly as on hardware.
 
 | Setting | Range | Hardware | Effect on the sound |
 | --- | --- | --- | --- |
+| Sample | —, 0–F | wave RAM, timer | Play a [sample](#samples) (drums, voices) instead of the waveform. — = play the waveform. |
 | Waveform | 0–F | wave RAM | Which of the 16 waveforms ([WAVE tab](#waveforms)) to play. |
 | Volume | Mute, 100 %, 50 %, 25 % | NR32 | The wave channel has only these four levels. |
 | Length | 0–256 | NR31, NR34 bit 6 | Note stops after *length* × 1/256 s. 0 = off. |
@@ -343,11 +349,54 @@ The **WAVE** tab edits the 16 waveforms (0–F) for the wave channel. A waveform
 - **Presets:** triangle, saw, square, sine, pulse25 replace the current wave.
 - **HEX:** the wave as 32 hex digits, one per sample. Edit them and press Enter to apply; useful to copy waves
   between songs or from other Game Boy tools.
+- **Import audio…:** makes the waveform from an audio file (WAV, or anything else your browser can play, such as
+  MP3, OGG or FLAC). Stereo files are mixed to mono, the level is normalised to use all 16 steps.
+  - Short files of up to 2048 samples are treated as one single-cycle waveform (the format of waveform libraries
+    such as AKWF) and squeezed into 32 samples as a whole.
+  - Longer recordings, such as a sustained synth or organ note, are searched for their pitch: one period is cut
+    out of the loudest part of the file, starting at a rising zero crossing. Recordings without a clear pitch
+    (noise, drums) are rejected.
+
+  The result is an ordinary waveform: it can be played at any pitch and edited further.
 
 A changed waveform is used from the next note on. To load a new wave the tracker briefly switches the wave
 channel's DAC off, as hardware drivers do; this avoids the DMG wave RAM corruption bug.
 
 Effect [9xx](#effects) switches the waveform during a note on the wave channel.
+
+## Samples
+
+Real samples, such as drums, voices or any short recording, play on the wave channel the way LSDJ kits do it.
+The wave channel only holds 32 nibbles at a time, so the driver keeps refilling wave RAM with the next part of
+the sample from a timer interrupt, 256 times a second.
+
+**Import:** in the **WAVE** tab, press **Import sample…** under SAMPLES and pick an audio file (WAV, or anything
+your browser can play). It is mixed to mono, silence at the start and end is cut off, the level is normalised
+and it is converted to 4 bits at 7936 Hz. A song holds up to 16 samples (0–F) of up to 4 seconds each. In the
+list you can rename a sample, listen to it (▶) or delete it (✕).
+
+**Play:** choose the sample in a wave instrument (**INSTR** tab, WAVE, *Sample*). Every note of that instrument
+starts the sample from the beginning; it plays once and stops at its end, at a note off or note cut (`E00`), or
+when another note starts on CH3.
+
+- **Fixed pitch:** a sample always plays at its own speed. The note only says *when* it starts, so any note
+  works (`C-5` is a good habit). Arpeggio, slides, portamento, vibrato and `9xx` have no effect on samples.
+- **Volume:** the instrument's volume and the volume column work as for waveforms (mute, 100 %, 50 %, 25 %).
+  The length setting does not apply.
+- **Sound:** 4 bits and 7936 Hz give the gritty sound of Game Boy drum kits. Short, loud, punchy sounds work
+  best; normalise and compress them before importing if they sound too quiet.
+
+**How it works on the hardware:** the wave channel plays at period 1792, one nibble every 512 clocks (8192 Hz),
+so its 32 positions take exactly 16384 clocks. The timer (16384 Hz clock, TMA `0xC0`) interrupts every 16384
+clocks. Each time the driver switches the DAC off (NR30 = `0x00`), which disables the channel so wave RAM can be
+written without the DMG corruption bug, writes the next 16 bytes, switches the DAC on and restarts the channel
+(NR33 = `0x00`, NR34 = `0x87`). After a restart the channel first plays the old sample buffer, then positions 1
+to 31; position 0 is never reached before the next refill. So each refill carries 31 new nibbles: 31 × 256 =
+7936 samples per second. The DAC is off for a few microseconds per refill on real hardware, a faint 256 Hz
+buzz that is part of the LSDJ-style sample sound.
+
+Samples are in every export: WAV and VGM (each refill at its exact clock), the Game Boy ROM, GBS and GBDK
+exports (with the timer interrupt driver), and XM and MOD (as one-shot samples at 7936 Hz).
 
 ## Effects
 
@@ -442,21 +491,50 @@ sound exactly like the target.
 
 ## Saving and loading
 
-The song is saved in your browser after every change and comes back when you reopen the page. This storage
-belongs to the browser and the device: it is lost when you clear the site data, and private windows may not
-keep it. Save a file for anything you want to keep.
+The tracker keeps two things in your browser:
 
-The **FILE** tab:
+- **The working copy:** the song you are editing. It is stored after every change and comes back when you
+  reload or reopen the page, even if you have not saved it.
+- **The song library:** every song you saved, with its title, author, hardware, number of patterns and the
+  date of the last save.
+
+Both belong to the browser and the device: they are lost when you clear the site data, and private windows may
+not keep them (the FILE tab says so when the browser refuses to store the library). Use **Back up library
+(.zip)** now and then, and download song files for anything you want to keep or move to another device.
+
+### The FILE tab
+
+The top line shows the title of the song you are editing and its state: **saved**, **unsaved changes**, or
+**not in the library** (a new song, the demo, or a song whose library entry was deleted). While there are
+unsaved changes the FILE tab shows a dot.
 
 | Button | Action |
 | --- | --- |
-| New | Start an empty song (asks first). |
-| Open… | Load a song file (`.gbt.json` or `.json`). |
-| Save (.json) | Download the song as `<title>.gbt.json`. |
-| Load demo | Replace the song with the demo (asks first). |
+| New | Start an empty song. |
+| Save | Save the song in the library, over its library entry if it has one (`Ctrl+S`). |
+| Save as… | Save a copy under a new title as a new library entry; you continue with the copy. |
+| Load demo | Replace the song with the demo. |
+| Import… | Add song files (`.gbt.json`, `.json`) or library backups (`.zip`) to the library. Several files can be chosen at once. A single song file is also opened. |
+| Download (.json) | Download the song you are editing as `<title>.gbt.json`. |
+| Back up library (.zip) | Download every library song as a `.gbt.json` file in one ZIP. Import the ZIP to restore them. |
+
+New, Load demo, opening a library song and importing a single file ask first when the song you are editing has
+unsaved changes.
+
+### The library list
+
+Tap or click a song's title to open it. The song you are editing is marked with a coloured bar. The buttons
+next to each song:
+
+| Button | Action |
+| --- | --- |
+| ✎ | Rename the song (asks for the new title). |
+| ⧉ | Duplicate it; the copy is called "… (copy)". |
+| ♫ | Use its instruments, waveforms and samples in the song you are editing; the notes stay as they are. Handy for a set of songs that share one sound. |
+| ✕ | Delete it from the library (asks first; this cannot be undone). |
 
 Song files are plain JSON and contain everything: patterns, order, instruments, waveforms, title, author, model
-and speed.
+and speed. Title and author are set in the **SONG** tab.
 
 ## Exporting
 
@@ -485,10 +563,16 @@ The ROM plays the song in an endless loop and shows the title, author, model and
 original hardware with a flash cartridge and in Game Boy emulators.
 Songs that do not fit into a 32 KiB ROM are stored over several banks of an MBC5 cartridge (up to about 4 MiB).
 
+Songs with [samples](#samples) also use the timer interrupt (`0x50`) to stream them into wave RAM.
+
 ### GBS
 
 GBS files contain the same player as the ROM and are called once per frame (VBlank timing). They play in GBS
 players and in many multi-format music players.
+
+Songs with [samples](#samples) run from the timer instead: the GBS player calls the driver 256 times a second,
+it refills wave RAM each time and plays a frame whenever 70224 clocks (one VBlank) have added up. Frames then
+start on that 256 Hz grid, up to 4 ms off the exact VBlank time; the average tempo is exact.
 
 ### XM and MOD
 
@@ -498,6 +582,8 @@ tracker's pitch (the tests check this against libopenmpt, the engine of OpenMPT)
 - **Instruments become samples:** a pulse instrument is one period of its duty cycle, a wave instrument one
   period of its waveform, a noise instrument the noise channel's random sequence (15 or 7 bit). Only the
   instruments the song uses are exported, named `P1`, `W3`, `N2` … after their channel type and number.
+  A wave instrument that plays a [sample](#samples) becomes that sample, one-shot and tuned so that its notes
+  (all written as `C-5`) play at 7936 Hz, like in the tracker.
 - **Envelopes:** XM gets a volume envelope that follows the hardware envelope and the length counter. MOD
   has no envelopes, so a fading or length-limited instrument is rendered into its sample (exact at the note the
   instrument plays most).
@@ -522,7 +608,7 @@ The **GBDK project (.zip)** export contains a ready-to-build project for
 | File | Content |
 | --- | --- |
 | `gbtr_player.c`, `gbtr_player.h` | The player, about 40 lines of C. |
-| `<name>.c`, `<name>.h` | The song as `const uint8_t <name>_data[]` and its loop offset `<name>_loop`. |
+| `<name>.c`, `<name>.h` | The song as `const uint8_t <name>_data[]` and its loop offset `<name>_loop`; with samples also `<name>_samples[]` and `<name>_sample_chunks[]`. |
 | `main.c` | Example program that prints the title and plays the song. |
 | `Makefile` | Builds `<name>.gb` with GBDK's `lcc`. |
 | `README.md` | Short instructions. |
@@ -560,6 +646,14 @@ This produces `my_song.gb` (marked Color compatible for GBC songs).
    }
    ```
 
+   If the song uses [samples](#samples), register them once before `gbtr_play()`:
+
+   ```c
+   gbtr_set_samples(my_song_samples, my_song_sample_chunks);
+   ```
+
+   This installs a timer interrupt handler (`add_TIM`) and sets TMA/TAC to 256 Hz, so your game cannot use the
+   timer for something else at the same time. The exported `main.c` already does this.
 3. Call `gbtr_update()` exactly once per frame. Instead of calling it in your main loop you can also run it from
    the VBlank interrupt with `add_VBL(gbtr_update);` so the music keeps time while your game is busy.
 4. `gbtr_stop()` stops the music and silences the APU. To switch songs, call `gbtr_play()` with the other song.
@@ -581,6 +675,8 @@ The song is a stream of bytes the player reads once per frame:
 | Byte | Meaning |
 | --- | --- |
 | `0x00`–`0x2F`, then `vv` | Write `vv` to the sound register `0xFF10 + byte` |
+| `0x30`, then `nn` | Start sample `nn` (load its first 16 bytes now, the rest from the timer interrupt) |
+| `0x31` | Stop the sample |
 | `0x81`–`0xFE` | Wait `byte & 0x7F` frames |
 | `0xFF` | Continue at the loop offset |
 
@@ -601,11 +697,20 @@ format is simple enough to play from an assembly driver (for example in RGBDS) i
 - **Stereo:** use `8xx` to place channels left or right. Original DMG units have only a mono speaker; stereo is
   heard on headphones.
 
+## About and the mini game
+
+**About** in the HELP tab opens a small window with the tracker's version, the author and links to the source
+code and this manual. It also holds a tiny Game Boy style jump'n'run: jump over the blocks for as long as you
+can, the screen gets faster over time. Press **Space**, **↑**, **X** or **Z**, tap the screen or press the red
+**A** button to jump. Your best score is kept in the browser. **Esc**, the **✕** button or a click outside the
+window closes it; while it is open, keys do not reach the tracker.
+
 ## Not available yet
 
 These are planned and listed in the [roadmap](https://github.com/wirehack7/Gameboy-Tracker/blob/main/ROADMAP.md):
 
 - XM and MOD import
+- Sample playback (drum kits, voices) on the wave channel
 - Video export with scopes and scrolling patterns, more audio formats
 - Undo/redo, block copy and paste
 - Instrument macros (per-tick tables)

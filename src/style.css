@@ -1095,3 +1095,244 @@ a.btn {
     height: 20px;
   }
 }
+
+/* ------------------------------------------------------------ song library */
+
+.current-song {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.song-state {
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.song-state[data-state='unsaved'],
+.song-state[data-state='notInLibrary'] {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.tabs button.dirty::after {
+  content: ' •';
+}
+
+.lib-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 40vh;
+  overflow: auto;
+  border-radius: 6px;
+}
+
+.lib-row {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  border-radius: 4px;
+}
+
+.lib-row:nth-child(odd) {
+  background: var(--pat-beat);
+}
+
+.lib-row[aria-current='true'] {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.lib-open {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  border: 0;
+  background: transparent;
+  padding: 5px 8px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.lib-title {
+  font-size: 13px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lib-row[aria-current='true'] .lib-title {
+  color: var(--accent);
+}
+
+.lib-info {
+  font-size: 11px;
+  color: var(--ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lib-act {
+  flex: none;
+  min-width: 30px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.lib-act:hover,
+.lib-act:focus-visible {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+/* Sample list in the WAVE tab */
+.sample-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sample-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sample-row input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--field);
+  color: inherit;
+}
+
+.sample-num,
+.sample-len {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.sample-len {
+  min-width: 4.5em;
+  text-align: right;
+}
+
+/* About dialog with the mini game */
+.about {
+  width: min(420px, calc(100vw - 16px));
+  max-height: calc(100dvh - 16px);
+  overflow: auto;
+  padding: 14px 16px 16px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 10px 40px rgb(0 0 0 / 35%);
+}
+
+.about::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+
+.about h2 {
+  margin: 0;
+  color: var(--accent);
+  font-size: 18px;
+  letter-spacing: 0.08em;
+}
+
+.about p {
+  margin: 6px 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.about a:not(.btn) {
+  color: var(--navy);
+}
+
+.about-version {
+  font-family: var(--mono);
+  color: var(--ink-soft);
+}
+
+.about-close {
+  float: right;
+  margin: 0;
+}
+
+.about-game {
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 8px 8px 28px 8px;
+  background: var(--pill);
+}
+
+.about-score {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--pill-ink);
+  margin-bottom: 6px;
+}
+
+.about-score output {
+  font-family: inherit;
+}
+
+/* 160 x 144 scaled up in whole pixels; shrinks on short landscape phones. */
+#about-lcd {
+  display: block;
+  width: min(100%, 320px, max(160px, (100dvh - 260px) * 160 / 144));
+  aspect-ratio: 160 / 144;
+  margin: 0 auto;
+  image-rendering: pixelated;
+  touch-action: manipulation;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.about-pad {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.about-pad .hint {
+  flex: 1;
+  margin: 0;
+  color: var(--pill-ink);
+  font-size: 12px;
+}
+
+.about-a {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 800;
+  font-size: 18px;
+  touch-action: manipulation;
+}
+
+.about-a:active {
+  background: var(--accent-hi);
+}

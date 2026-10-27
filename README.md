@@ -13,11 +13,12 @@ What comes next is in the [roadmap](ROADMAP.md).
 ## Features
 
 - 4 channels as on the hardware: 2 × pulse (channel 1 with sweep), wave, noise
-- Pattern editor with order list, 15 instruments per channel type and 16 drawable waveforms
+- Pattern editor with order list, 15 instruments per channel type and 16 drawable waveforms (or imported from audio)
+- Samples (drums, voices) on the wave channel, streamed into wave RAM from the timer interrupt like LSDJ kits
 - Effects: arpeggio, slides, portamento, vibrato, volume slide, delay, cut, panning, master volume, speed, jump/break
 - DMG or GBC mode per song
 - Oscilloscope per channel, click to mute
-- Save as JSON, automatic backup in the browser
+- Song library in the browser (save, open, rename, duplicate, delete), JSON import/export, ZIP backup of the library, automatic working-copy backup
 - Exports: playable Game Boy ROM (.gb/.gbc), GBS, XM, MOD, VGM, WAV, FLAC, per-channel stems, and a GBDK-2020 project (C array + tiny driver + Makefile)
 - Full-window tracker layout in Game Boy colours (off-white, A/B-button red) with colour-coded pattern columns, light and dark mode
 - Responsive: desktop with side lists, tablet two-column, phone with views and an on-screen keypad

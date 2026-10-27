@@ -13,7 +13,8 @@ import {
 } from '../../src/export/rom';
 import { RegisterStream, StreamPlayer, Write, encodeStream, optimizeStream } from '../../src/export/stream';
 import { demoSong } from '../../src/tracker/demo';
-import { CYCLES_PER_TICK, Song } from '../../src/tracker/song';
+import { SAMPLE_TAC, SAMPLE_TMA, SampleBus, sampleChunks } from '../../src/tracker/sample';
+import { CYCLES_PER_TICK, NOTE_OFF, Song, createSong } from '../../src/tracker/song';
 import { Sm83, TestBus } from './sm83';
 
 /** Expected writes per frame, from the reference driver. */
@@ -235,5 +236,182 @@ describe('ROM export', () => {
     // the high byte of colour 3 (A/B red 0xA3224F -> RGB555 0x2494).
     expect(bus.io[0x68]).toBe(0x80);
     expect(bus.io[0x69]).toBe(0x24);
+  });
+});
+
+describe('samples in GBS and ROM', () => {
+  /** Ramp levels, so every chunk differs. */
+  const ramp = (n: number) => Array.from({ length: n }, (_, i) => ((i * 5) % 16).toString(16)).join('');
+
+  function sampleSong(model: 'dmg' | 'cgb' = 'dmg'): Song {
+    const s = createSong();
+    s.model = model;
+    s.speed = 1;
+    s.samples = [
+      { name: 'A', data: ramp(31 * 10) },
+      { name: 'B', data: ramp(31 * 3 + 5) },
+    ];
+    s.waveInstruments[0].sample = 0;
+    s.waveInstruments[1].sample = 1;
+    const ch3 = (row: number, c: object) => Object.assign(s.patterns[0].rows[row][2], c);
+    ch3(0, { note: 36, instrument: 0 });
+    ch3(1, { volume: 5 });
+    ch3(20, { note: 36, instrument: 1 });
+    ch3(21, { note: 36, instrument: 0 }); // cuts B short
+    ch3(22, { note: NOTE_OFF }); // stops A at once
+    ch3(30, { note: 36, instrument: 2 }); // a waveform again
+    ch3(40, { note: 36, instrument: 1 });
+    // Pulse notes too, so stream and samples interleave.
+    s.patterns[0].rows[0][0].note = 30;
+    s.patterns[0].rows[0][0].instrument = 0;
+    return s;
+  }
+
+  const chunksOf = (s: Song) => s.samples.map((x) => sampleChunks(x.data));
+
+  /** A frame's expected writes: the reference driver with sample starts expanded to their first reload. */
+  function frameModel(enc: EncodedSong, s: Song) {
+    const player = new StreamPlayer(enc.data, enc.loopOffset);
+    let log: Write[] = [];
+    const target = { write: (a: number, v: number) => log.push([a, v]) };
+    const bus = new SampleBus(target, chunksOf(s));
+    return {
+      bus,
+      log: () => log,
+      frame() {
+        log = [];
+        player.update(bus);
+        return log;
+      },
+      reload() {
+        log = [];
+        bus.voice.reload(target);
+        return log;
+      },
+    };
+  }
+
+  it('GBS: play runs from the timer at 256 Hz and streams the samples like the driver model', () => {
+    const s = sampleSong();
+    const enc = encodeSong(s);
+    const { data, info } = buildGbs(s, enc);
+    expect(data[0x0e]).toBe(SAMPLE_TMA);
+    expect(data[0x0f]).toBe(SAMPLE_TAC);
+    const v = new DataView(data.buffer);
+    const rom = new Uint8Array(LOAD_ADDRESS + data.length - 0x70);
+    rom.set(data.subarray(0x70), LOAD_ADDRESS);
+    const bus = new TestBus(rom);
+    const cpu = new Sm83(bus);
+    bus.cpu = cpu;
+    cpu.call(info.init);
+    expect(v.getUint16(0x08, true)).toBe(info.init);
+
+    const model = frameModel(enc, s);
+    let acc = 4389 - 1024;
+    let frames = 0;
+    for (let call = 0; call < 256 * 3; call++) {
+      const start = bus.apuWrites.length;
+      cpu.call(info.play);
+      const got = bus.apuWrites.slice(start).map(({ addr, value }) => [addr, value] as Write);
+      const want = [...model.reload()];
+      acc += 1024;
+      if (acc >= 4389) {
+        acc -= 4389;
+        want.push(...model.frame());
+        frames++;
+      }
+      expect(got, `call ${call}`).toEqual(want);
+    }
+    // 3 seconds at 256 Hz: as many frames as VBlanks in 3 s.
+    expect(Math.abs(frames - (3 * 4194304) / CYCLES_PER_TICK)).toBeLessThan(1);
+  });
+
+  it('GBS: songs without samples still play on VBlank', () => {
+    const { data } = buildGbs(demoSong());
+    expect(data[0x0f]).toBe(0);
+  });
+
+  /** Run a ROM with the timer and interrupts, separating play writes from timer interrupt writes. */
+  function runTimed(rom: Uint8Array, play: number, frames: number) {
+    const bus = new TestBus(rom);
+    const cpu = new Sm83(bus);
+    bus.cpu = cpu;
+    cpu.pc = 0x100;
+    bus.io[0x40] = 0x91;
+    const playFrames: Write[][] = [];
+    const playCycles: number[] = [];
+    const isr: { cycle: number; writes: Write[] }[] = [];
+    let inIsr = false;
+    for (let steps = 0; playFrames.length <= frames; steps++) {
+      if (steps > 80_000_000) throw new Error('ROM did not reach enough frames');
+      bus.updateTimer();
+      if (cpu.interrupt()) {
+        expect(cpu.pc).toBe(0x50);
+        inIsr = true;
+        isr.push({ cycle: cpu.cycles, writes: [] });
+      }
+      if (cpu.pc === play && !inIsr) {
+        playFrames.push([]);
+        playCycles.push(cpu.cycles);
+      }
+      const reti = inIsr && bus.read(cpu.pc) === 0xd9;
+      const before = bus.apuWrites.length;
+      cpu.step();
+      for (const w of bus.apuWrites.slice(before)) {
+        const entry: Write = [w.addr, w.value];
+        if (inIsr) isr[isr.length - 1].writes.push(entry);
+        else playFrames[playFrames.length - 1]?.push(entry);
+      }
+      if (reti) inIsr = false;
+    }
+    playFrames.pop();
+    return { playFrames, playCycles, isr, bus };
+  }
+
+  it.each(['dmg', 'cgb'] as const)('ROM (%s): VBlank plays the stream, the timer interrupt streams the samples', (model) => {
+    const s = sampleSong(model);
+    const enc = encodeSong(s);
+    const { data, play } = buildRom(s, enc);
+    expect([...data.subarray(0x50, 0x51)]).toEqual([0xc3]); // jp isr
+    const frames = 50;
+    const { playFrames, playCycles, isr } = runTimed(data, play, frames);
+
+    // Frame writes: exactly the driver model (sample starts load their first chunk at once).
+    const m = frameModel(enc, s);
+    const starts: number[] = [];
+    for (let f = 0; f < frames; f++) {
+      const wasActive = m.bus.voice.active;
+      const want = m.frame();
+      if (want.some(([a, v]) => a === 0x1e && v === 0x87) || (!wasActive && m.bus.voice.active)) starts.push(f);
+      expect(playFrames[f], `frame ${f}`).toEqual(want);
+    }
+
+    // Interrupt writes: the remaining chunks of each sample, 16384 clocks apart, then DAC off.
+    const nonEmpty = isr.filter((i) => i.writes.length);
+    const chunks = chunksOf(s);
+    const block = (c: Uint8Array, k: number): Write[] => [
+      [0x1a, 0],
+      ...Array.from({ length: 16 }, (_, i) => [0x30 + i, c[k * 16 + i]] as Write),
+      [0x1a, 0x80],
+      [0x1d, 0x00],
+      [0x1e, 0x87],
+    ];
+    // Sample A from frame 0 runs 10 chunks: 9 more reloads, then the end.
+    const a = chunks[0];
+    for (let k = 1; k < 10; k++) expect(nonEmpty[k - 1].writes).toEqual(block(a, k));
+    expect(nonEmpty[9].writes).toEqual([[0x1a, 0]]);
+    for (let k = 1; k < 10; k++) {
+      const dt = nonEmpty[k].cycle - nonEmpty[k - 1].cycle;
+      expect(dt).toBeGreaterThan(16384 - 600);
+      expect(dt).toBeLessThan(16384 + 600);
+    }
+    // B (frame 20) is cut by A (frame 21) within a frame, A by the note off: no stray reloads after it.
+    const between = (a: number, b: number) => nonEmpty.filter((i) => i.cycle > playCycles[a] && i.cycle < playCycles[b]);
+    expect(between(20, 21)).toHaveLength(4); // B: reloads 1-3 fit before frame 21 (70224 clocks)
+    expect(between(21, 22).map((i) => i.writes)).toEqual(Array.from({ length: 4 }, (_, k) => block(a, k + 1)));
+    expect(between(22, 40)).toEqual([]);
+    // B again at frame 40: 4 chunks, so 3 reloads and the end.
+    const late = nonEmpty.filter((i) => i.cycle > playCycles[40]);
+    expect(late.map((i) => i.writes)).toEqual([block(chunks[1], 1), block(chunks[1], 2), block(chunks[1], 3), [[0x1a, 0]]]);
   });
 });

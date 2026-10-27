@@ -1,4 +1,5 @@
 import type { Model } from '../apu/apu';
+import { SAMPLE_COUNT, SAMPLE_MAX_LENGTH } from './sample';
 
 /** Empty field marker for note, instrument, volume and effect. */
 export const EMPTY = -1;
@@ -56,6 +57,15 @@ export interface WaveInstrument {
   volume: number;
   /** 0 = off, else 1..256 */
   length: number;
+  /** Sample to play instead of the waveform, -1 = none (see sample.ts). */
+  sample: number;
+}
+
+/** A 4-bit sample for the wave channel, at SAMPLE_RATE. */
+export interface Sample {
+  name: string;
+  /** One hex digit (level 0..15) per sample. */
+  data: string;
 }
 
 export interface NoiseInstrument {
@@ -82,6 +92,8 @@ export interface Song {
   noiseInstruments: NoiseInstrument[];
   /** WAVE_COUNT waves of 32 4-bit samples */
   waves: number[][];
+  /** Up to SAMPLE_COUNT samples for wave instruments. */
+  samples: Sample[];
 }
 
 export function emptyCell(): Cell {
@@ -123,7 +135,7 @@ export function defaultPulse(i: number): PulseInstrument {
 }
 
 export function defaultWaveInstrument(i: number): WaveInstrument {
-  return { name: `Wave ${i + 1}`, wave: i, volume: 1, length: 0 };
+  return { name: `Wave ${i + 1}`, wave: i, volume: 1, length: 0, sample: -1 };
 }
 
 export function defaultNoise(i: number): NoiseInstrument {
@@ -144,7 +156,17 @@ export function createSong(): Song {
     waveInstruments: Array.from({ length: INSTRUMENT_COUNT }, (_, i) => defaultWaveInstrument(i)),
     noiseInstruments: Array.from({ length: INSTRUMENT_COUNT }, (_, i) => defaultNoise(i)),
     waves: Array.from({ length: WAVE_COUNT }, (_, i) => [...presets[i % presets.length]]),
+    samples: [],
   };
+}
+
+/** Remove a sample; instruments that used it fall back to their waveform. */
+export function deleteSample(song: Song, index: number) {
+  song.samples.splice(index, 1);
+  for (const w of song.waveInstruments) {
+    if (w.sample === index) w.sample = -1;
+    else if (w.sample > index) w.sample--;
+  }
 }
 
 /** Pack 32 nibbles into the 16 bytes of wave RAM (high nibble first). */
@@ -177,6 +199,10 @@ export function parseSong(json: unknown): Song {
   }));
   if (!patterns.length) patterns.push(emptyPattern());
   const order = raw.order.map((o) => clampInt(o, 0, patterns.length - 1, 0));
+  const samples: Sample[] = (Array.isArray(raw.samples) ? raw.samples : []).slice(0, SAMPLE_COUNT).map((x, i) => ({
+    name: typeof x?.name === 'string' ? x.name : `Sample ${i + 1}`,
+    data: typeof x?.data === 'string' ? x.data.replace(/[^0-9a-f]/gi, '').toLowerCase().slice(0, SAMPLE_MAX_LENGTH) : '',
+  }));
   return {
     version: 1,
     title: typeof raw.title === 'string' ? raw.title : base.title,
@@ -186,11 +212,15 @@ export function parseSong(json: unknown): Song {
     patterns,
     order: order.length ? order : [0],
     pulseInstruments: base.pulseInstruments.map((d, i) => ({ ...d, ...raw.pulseInstruments?.[i] })),
-    waveInstruments: base.waveInstruments.map((d, i) => ({ ...d, ...raw.waveInstruments?.[i] })),
+    waveInstruments: base.waveInstruments.map((d, i) => {
+      const w = { ...d, ...raw.waveInstruments?.[i] };
+      return { ...w, sample: clampInt(w.sample, -1, samples.length - 1, -1) };
+    }),
     noiseInstruments: base.noiseInstruments.map((d, i) => ({ ...d, ...raw.noiseInstruments?.[i] })),
     waves: base.waves.map((d, i) => {
       const w = raw.waves?.[i];
       return Array.isArray(w) && w.length === 32 ? w.map((s) => clampInt(s, 0, 15, 0)) : d;
     }),
+    samples,
   };
 }

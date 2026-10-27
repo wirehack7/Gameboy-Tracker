@@ -1,5 +1,7 @@
 import './style.css';
 import { AudioClient } from './audio/client';
+import { sampleFromAudio, toMono, waveFromAudio } from './audio/import';
+import { SAMPLE_COUNT, SAMPLE_RATE } from './tracker/sample';
 import { demoSong } from './tracker/demo';
 import { gbdkProject } from './export/gbdk';
 import { captureStream } from './export/stream';
@@ -9,9 +11,11 @@ import { encodeXm } from './export/xm';
 import { encodeVgm } from './export/vgm';
 import { encodeFlac } from './export/flac';
 import { RenderOptions, encodeWav, renderSong, renderStems } from './export/wav';
-import { zip } from './export/zip';
+import { unzip, zip } from './export/zip';
 import { MidiInput, MidiStatus, midiToNote } from './input/midi';
 import { NOTE_COUNT } from './tracker/notes';
+import { SongLibrary, SongMeta, copySounds, fileName, openStore, uniqueNames } from './tracker/library';
+import { openAbout } from './ui/about';
 import { pianoKeys, pianoOctaves, pianoWhites } from './ui/piano';
 import { scopeTrace } from './ui/scope';
 import {
@@ -24,6 +28,7 @@ import {
   WAVE_PRESETS,
   clonePattern,
   createSong,
+  deleteSample,
   emptyPattern,
   parseSong,
 } from './tracker/song';
@@ -50,6 +55,8 @@ const PIANO_KEY = 'gb-tracker.piano';
 const MIDI_KEY = 'gb-tracker.midi';
 const LANG_KEY = 'gb-tracker.lang';
 const REC_KEY = 'gb-tracker.rec';
+/** Which library entry the working copy belongs to, and whether it has unsaved changes. */
+const SESSION_KEY = 'gb-tracker.session';
 const DEFAULT_VOLUME = 35;
 
 // ------------------------------------------------------------------ storage
@@ -70,21 +77,36 @@ function store(key: string, value: string) {
   }
 }
 
-function initialSong(): Song {
+function initialSong(): Song | null {
   const raw = loadStored(STORAGE_KEY);
   if (raw) {
     try {
       return parseSong(JSON.parse(raw));
     } catch {
-      /* fall through to a new song */
+      /* fall through to the demo */
     }
   }
-  return demoSong();
+  return null;
+}
+
+function initialSession(): { id: string | null; dirty: boolean } | null {
+  try {
+    const s = JSON.parse(loadStored(SESSION_KEY) ?? 'null');
+    return s && typeof s === 'object' ? { id: typeof s.id === 'string' ? s.id : null, dirty: !!s.dirty } : null;
+  } catch {
+    return null;
+  }
 }
 
 // -------------------------------------------------------------------- state
 
-let song = initialSong();
+const restored = initialSong();
+let song = restored ?? demoSong();
+const session = initialSession();
+/** Library entry of the working copy; null when it is not in the library. */
+let songId = restored ? (session?.id ?? null) : null;
+/** The working copy differs from its library entry (or is not in the library and has been edited). */
+let dirty = restored ? (session?.dirty ?? false) : false;
 let order = 0;
 let cursor: Cursor = { row: 0, ch: 0, field: 0 };
 let octave = 4;
@@ -107,10 +129,21 @@ const audio = new AudioClient();
 audio.setSong(song);
 
 let saveTimer = 0;
+/** Keeps the working copy in localStorage, so a reload or a crash loses nothing. */
+function persist(now = false) {
+  clearTimeout(saveTimer);
+  const write = () => {
+    store(STORAGE_KEY, JSON.stringify(song));
+    store(SESSION_KEY, JSON.stringify({ id: songId, dirty }));
+  };
+  if (now) write();
+  else saveTimer = window.setTimeout(write, 400);
+}
+
 function changed(structure = false) {
   audio.setSong(song);
-  clearTimeout(saveTimer);
-  saveTimer = window.setTimeout(() => store(STORAGE_KEY, JSON.stringify(song)), 400);
+  setDirty(true);
+  persist();
   if (structure) renderAll();
 }
 
@@ -490,6 +523,11 @@ audio.onRow = (o, r) => {
 const noteKeysDown = new Map<string, number>();
 
 document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'KeyS') {
+    e.preventDefault();
+    void saveToLibrary();
+    return;
+  }
   const target = e.target as HTMLElement;
   if (target.closest('input, textarea, select')) return;
   if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -1000,6 +1038,8 @@ function renderInstrumentPanel() {
     form += slider('i-ss', t('inst.sweepShift'), p.sweepShift, 0, 7);
   } else if (instKind === 'wave') {
     const w = song.waveInstruments[instIndex];
+    const sampleOptions = [t('inst.noSample'), ...song.samples.map((x, i) => `${i.toString(16).toUpperCase()} ${escapeHtml(x.name)}`)];
+    form += `<label for="i-sample">${t('inst.sample')}</label><select id="i-sample">${sampleOptions.map((d, i) => `<option value="${i - 1}" ${w.sample === i - 1 ? 'selected' : ''}>${d}</option>`).join('')}</select>`;
     form += slider('i-wave', t('inst.waveform'), w.wave, 0, WAVE_COUNT - 1);
     form += `<label for="i-wvol">${t('inst.volume')}</label><select id="i-wvol">${[t('inst.waveMute'), '100 %', '50 %', '25 %'].map((d, i) => `<option value="${i}" ${w.volume === i ? 'selected' : ''}>${d}</option>`).join('')}</select>`;
     form += slider('i-len', t('inst.length'), w.length, 0, 256);
@@ -1055,6 +1095,10 @@ function renderInstrumentPanel() {
     bindRange('i-ss', (v) => (p.sweepShift = v));
   } else if (instKind === 'wave') {
     const w = song.waveInstruments[instIndex];
+    $<HTMLSelectElement>('i-sample').addEventListener('change', (e) => {
+      w.sample = Number((e.target as HTMLSelectElement).value);
+      changed();
+    });
     bindRange('i-wave', (v) => (w.wave = v));
     $<HTMLSelectElement>('i-wvol').addEventListener('change', (e) => {
       w.volume = Number((e.target as HTMLSelectElement).value);
@@ -1094,9 +1138,27 @@ function renderWavePanel() {
     <h2>${t('wave.heading', { n: waveIndex.toString(16).toUpperCase() })}</h2>
     <canvas class="wave-canvas" id="wave-canvas" width="320" height="160" aria-label="${t('wave.draw')}"></canvas>
     <div class="btn-row">${presets.map((p) => `<button type="button" class="btn" data-preset="${p}">${t(`wave.preset.${p}` as MessageKey)}</button>`).join('')}</div>
+    <div class="btn-row"><button type="button" class="btn" id="w-import">${t('wave.import')}</button></div>
+    <input type="file" id="w-file" accept="audio/*,.wav" class="visually-hidden">
+    <p class="hint">${t('wave.importHint')}</p>
     <h2>${t('wave.hex')}</h2>
     <div class="form"><label for="w-hex">${t('wave.data')}</label><input type="text" id="w-hex" spellcheck="false" maxlength="32"></div>
-    <p class="hint">${t('wave.hint')}</p>`;
+    <p class="hint">${t('wave.hint')}</p>
+    <h2>${t('sample.title')}</h2>
+    <div class="sample-list">${song.samples
+      .map(
+        (x, i) => `<div class="sample-row">
+          <span class="sample-num">${i.toString(16).toUpperCase()}</span>
+          <input type="text" data-sname="${i}" value="${escapeHtml(x.name)}" aria-label="${t('sample.name')}">
+          <span class="sample-len">${num(x.data.length / SAMPLE_RATE, 2)} s</span>
+          <button type="button" class="btn" data-splay="${i}" aria-label="${t('sample.play')}">▶</button>
+          <button type="button" class="btn" data-sdel="${i}" aria-label="${t('sample.delete')}">✕</button>
+        </div>`,
+      )
+      .join('')}</div>
+    <div class="btn-row"><button type="button" class="btn" id="s-import" ${song.samples.length >= SAMPLE_COUNT ? 'disabled' : ''}>${t('sample.import')}</button></div>
+    <input type="file" id="s-file" accept="audio/*,.wav" class="visually-hidden">
+    <p class="hint">${t('sample.hint')}</p>`;
   const wave = song.waves[waveIndex];
   const canvas = $<HTMLCanvasElement>('wave-canvas');
   const hexInput = $<HTMLInputElement>('w-hex');
@@ -1152,6 +1214,72 @@ function renderWavePanel() {
       changed();
     }),
   );
+  const fileInput = $<HTMLInputElement>('w-file');
+  $('w-import').addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', async () => {
+    const file = fileInput.files?.[0];
+    fileInput.value = '';
+    if (!file) return;
+    try {
+      const { channels, rate } = await decodeAudioFile(file);
+      waveFromAudio(toMono(channels), rate).forEach((v, i) => (wave[i] = v));
+      draw();
+      changed();
+      toast(t('wave.imported', { name: file.name }));
+    } catch (err) {
+      toast(t('wave.importError', { error: (err as Error).message }));
+    }
+  });
+  bindSamples();
+}
+
+function bindSamples() {
+  panelEl.querySelectorAll<HTMLInputElement>('[data-sname]').forEach((el) =>
+    el.addEventListener('input', () => {
+      song.samples[Number(el.dataset.sname)].name = el.value;
+      changed();
+    }),
+  );
+  panelEl.querySelectorAll<HTMLButtonElement>('[data-splay]').forEach((b) =>
+    b.addEventListener('click', () => {
+      void ensureAudio();
+      audio.send({ type: 'sample', index: Number(b.dataset.splay) });
+    }),
+  );
+  panelEl.querySelectorAll<HTMLButtonElement>('[data-sdel]').forEach((b) =>
+    b.addEventListener('click', () => {
+      const i = Number(b.dataset.sdel);
+      if (!confirm(t('sample.confirmDelete', { name: song.samples[i].name }))) return;
+      deleteSample(song, i);
+      changed();
+      renderPanel();
+    }),
+  );
+  const input = $<HTMLInputElement>('s-file');
+  $('s-import').addEventListener('click', () => input.click());
+  input.addEventListener('change', async () => {
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file || song.samples.length >= SAMPLE_COUNT) return;
+    try {
+      const { channels, rate } = await decodeAudioFile(file);
+      const data = sampleFromAudio(toMono(channels), rate);
+      song.samples.push({ name: file.name.replace(/\.[^.]*$/, '').slice(0, 22), data });
+      changed();
+      renderPanel();
+      toast(t('sample.imported', { n: (song.samples.length - 1).toString(16).toUpperCase(), seconds: num(data.length / SAMPLE_RATE, 2) }));
+    } catch (err) {
+      toast(t('wave.importError', { error: (err as Error).message }));
+    }
+  });
+}
+
+/** Decode any audio file the browser understands to PCM. */
+async function decodeAudioFile(file: File): Promise<{ channels: Float32Array[]; rate: number }> {
+  const ctx = new OfflineAudioContext(1, 1, 44100);
+  const buffer = await ctx.decodeAudioData(await file.arrayBuffer());
+  const channels = Array.from({ length: buffer.numberOfChannels }, (_, i) => buffer.getChannelData(i));
+  return { channels, rate: buffer.sampleRate };
 }
 
 function renderSongPanel() {
@@ -1228,7 +1356,8 @@ function renderSongPanel() {
     deleteRow(pattern(), cursor.ch, cursor.row);
     changed(true);
   });
-  bindCheck('s-follow', (v) => (follow = v));
+  // Following playback is a view setting, not a change to the song.
+  $<HTMLInputElement>('s-follow').addEventListener('change', (e) => (follow = (e.target as HTMLInputElement).checked));
 }
 
 function download(name: string, data: BlobPart, type: string) {
@@ -1240,18 +1369,27 @@ function download(name: string, data: BlobPart, type: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-const fileBase = () => (song.title || 'song').replace(/[^\w-]+/g, '_');
+const fileBase = () => fileName(song.title);
 
 function renderFilePanel() {
   panelEl.innerHTML = `
     <h2>${t('file.title')}</h2>
-    <div class="btn-row" style="margin-top:0">
+    <div class="current-song"><strong>${escapeHtml(song.title || t('lib.untitled'))}</strong> <span class="song-state" id="f-state"></span></div>
+    <div class="btn-row">
       <button type="button" class="btn" id="f-new">${t('file.new')}</button>
-      <button type="button" class="btn" id="f-open">${t('file.open')}</button>
-      <button type="button" class="btn primary" id="f-save">${t('file.save')}</button>
+      <button type="button" class="btn primary" id="f-store" title="${t('file.storeTitle')}">${t('file.store')}</button>
+      <button type="button" class="btn" id="f-saveas">${t('file.saveAs')}</button>
       <button type="button" class="btn" id="f-demo">${t('file.demo')}</button>
     </div>
-    <input type="file" id="f-input" accept=".json,application/json" class="visually-hidden">
+    <h2>${t('lib.title', { count: libraryList.length })}</h2>
+    <div class="lib-list" id="lib-list"></div>
+    <p class="hint">${t(!library ? 'lib.loading' : libraryPersistent ? 'lib.hint' : 'lib.memory')}</p>
+    <div class="btn-row">
+      <button type="button" class="btn" id="f-open">${t('file.open')}</button>
+      <button type="button" class="btn" id="f-save">${t('file.save')}</button>
+      <button type="button" class="btn" id="f-backup">${t('file.backup')}</button>
+    </div>
+    <input type="file" id="f-input" accept=".json,.zip,application/json,application/zip" multiple class="visually-hidden">
     <p class="hint">${t('file.autosave')}</p>
     <h2>${t('export.title')}</h2>
     <div class="form">${slider('x-loops', t('export.loops'), 1, 1, 4)}</div>
@@ -1267,29 +1405,37 @@ function renderFilePanel() {
       <button type="button" class="btn" id="x-gbdk">${t('export.gbdk')}</button>
     </div>
     <p class="hint" id="x-status">${t('export.hint')}</p>`;
+  renderSongState();
+  renderLibraryList();
   const input = $<HTMLInputElement>('f-input');
   $('f-new').addEventListener('click', () => {
-    if (!confirm(t('file.confirmNew'))) return;
-    loadSong(createSong());
+    if (confirmDiscard()) loadSong(createSong(), null);
   });
   $('f-demo').addEventListener('click', () => {
-    if (!confirm(t('file.confirmDemo'))) return;
-    loadSong(demoSong());
+    if (confirmDiscard()) loadSong(demoSong(), null);
+  });
+  $('f-store').addEventListener('click', () => void saveToLibrary());
+  $('f-saveas').addEventListener('click', () => {
+    const title = prompt(t('lib.saveAsPrompt'), song.title + t('lib.copySuffix'));
+    if (title === null) return;
+    song.title = title.trim() || song.title;
+    void saveToLibrary(true);
+  });
+  $('lib-list').addEventListener('click', (e) => {
+    const button = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-act]');
+    const id = button?.closest<HTMLElement>('[data-id]')?.dataset.id;
+    if (button && id) void libraryAction(button.dataset.act!, id);
   });
   $('f-open').addEventListener('click', () => input.click());
   input.addEventListener('change', async () => {
-    const file = input.files?.[0];
-    if (!file) return;
-    try {
-      loadSong(parseSong(JSON.parse(await file.text())));
-      toast(t('file.loaded', { title: song.title }));
-    } catch (err) {
-      toast(t('file.loadError', { error: (err as Error).message }));
-    }
+    const files = [...(input.files ?? [])];
+    input.value = '';
+    if (files.length) await importFiles(files);
   });
   $('f-save').addEventListener('click', () =>
     download(`${fileBase()}.gbt.json`, JSON.stringify(song), 'application/json'),
   );
+  $('f-backup').addEventListener('click', () => void backupLibrary());
   bindRange('x-loops', () => {});
   /** Render audio with progress in the status line, then hand over the file. */
   const exportAudio = (
@@ -1380,11 +1526,12 @@ function renderHelpPanel() {
     [t('help.keyName.ins'), 'help.key.insert'],
     ['Esc', 'help.key.rec'],
     ['[ / ]', 'help.key.octave'],
+    [t('help.keyName.save'), 'help.key.save'],
   ];
   const table = (rows: [string, string][]) =>
     `<table class="help-table">${rows.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('')}</table>`;
   panelEl.innerHTML = `
-    <div class="btn-row" style="margin-top:0"><a class="btn primary" href="./manual.html" target="_blank" rel="noopener">${t('help.manual')}</a></div>
+    <div class="btn-row" style="margin-top:0"><a class="btn primary" href="./manual.html" target="_blank" rel="noopener">${t('help.manual')}</a><button type="button" class="btn" id="about-open">${t('help.about')}</button></div>
     <h2>${t('help.columns')}</h2>
     <div class="legend"><span class="f0">C-4 ${t('help.col.note')}</span><span class="f1">1 ${t('help.col.instrument')}</span><span class="f2">F ${t('help.col.volume')}</span><span class="f3">A ${t('help.col.effect')}</span><span class="f4">0F ${t('help.col.param')}</span></div>
     <h2>${t('help.keyboard')}</h2>${table(keys.map(([k, m]) => [k, t(m)]))}
@@ -1394,6 +1541,7 @@ function renderHelpPanel() {
     <p class="hint">${t('help.pianoHint')}</p>
     <h2>${t('help.effects')}</h2>${table(fx)}
     <p class="hint">${t('help.footer')}</p>`;
+  $('about-open').addEventListener('click', openAbout);
 }
 
 function renderPanel() {
@@ -1408,13 +1556,211 @@ function renderPanel() {
   renderInstList();
 }
 
-function loadSong(next: Song) {
+function loadSong(next: Song, id: string | null) {
   if (playing) togglePlay();
   song = next;
+  songId = id;
+  dirty = false;
   order = 0;
   cursor = { row: 0, ch: 0, field: 0 };
-  changed(true);
+  audio.setSong(song);
+  persist(true);
+  renderAll();
 }
+
+// ------------------------------------------------------------------ library
+
+let library: SongLibrary | null = null;
+let libraryPersistent = true;
+let libraryList: SongMeta[] = [];
+
+function setDirty(value: boolean) {
+  if (dirty === value) return;
+  dirty = value;
+  renderSongState();
+}
+
+/** Shows whether the working copy is saved, in the FILE tab and as a dot on the tab. */
+function renderSongState() {
+  document.querySelector('[data-tab="file"]')?.classList.toggle('dirty', dirty);
+  const el = document.getElementById('f-state');
+  if (!el) return;
+  const state = !songId ? 'lib.notInLibrary' : dirty ? 'lib.unsaved' : 'lib.saved';
+  el.textContent = t(state);
+  el.dataset.state = state.slice(4);
+}
+
+function renderLibraryList() {
+  const el = document.getElementById('lib-list');
+  if (!el) return;
+  const date = (ms: number) =>
+    new Date(ms).toLocaleString(getLocale(), { dateStyle: 'short', timeStyle: 'short' });
+  const action = (act: string, icon: string, label: MessageKey, title: string) =>
+    `<button type="button" class="lib-act" data-act="${act}" title="${escapeHtml(t(label, { title }))}" aria-label="${escapeHtml(t(label, { title }))}">${icon}</button>`;
+  el.innerHTML = libraryList.length
+    ? libraryList
+        .map((m) => {
+          const title = m.title || t('lib.untitled');
+          const info = [m.author, m.model === 'cgb' ? 'GBC' : 'DMG', t('lib.patterns', { count: m.patterns }), date(m.updated)]
+            .filter(Boolean)
+            .map(escapeHtml)
+            .join(' · ');
+          const current = m.id === songId;
+          return `<div class="lib-row" data-id="${m.id}" aria-current="${current}">
+            <button type="button" class="lib-open" data-act="open" title="${escapeHtml(t('lib.open', { title }))}"><span class="lib-title">${escapeHtml(title)}</span><span class="lib-info">${info}</span></button>
+            ${action('rename', '✎', 'lib.rename', title)}${action('duplicate', '⧉', 'lib.duplicate', title)}${current ? '<span class="lib-act" aria-hidden="true"></span>' : action('sounds', '♫', 'lib.sounds', title)}${action('delete', '✕', 'lib.delete', title)}
+          </div>`;
+        })
+        .join('')
+    : `<p class="hint">${t(library ? 'lib.empty' : 'lib.loading')}</p>`;
+}
+
+async function refreshLibrary() {
+  if (!library) return;
+  libraryList = await library.list();
+  if (tab === 'file') renderPanel();
+}
+
+/** True when nothing unsaved would be lost, or the user agrees to lose it. */
+function confirmDiscard() {
+  return !dirty || confirm(t('lib.confirmDiscard', { title: song.title || t('lib.untitled') }));
+}
+
+async function saveToLibrary(asCopy = false) {
+  if (!library) return;
+  try {
+    const meta = await library.save(structuredClone(song), asCopy ? undefined : (songId ?? undefined));
+    songId = meta.id;
+    dirty = false;
+    persist(true);
+    toast(t('lib.savedToast', { title: meta.title || t('lib.untitled') }));
+  } catch (err) {
+    toast(t('lib.error', { error: (err as Error).message }));
+  }
+  renderSongState();
+  await refreshLibrary();
+}
+
+async function libraryAction(act: string, id: string) {
+  if (!library) return;
+  const meta = libraryList.find((m) => m.id === id);
+  if (!meta) return;
+  const title = meta.title || t('lib.untitled');
+  try {
+    if (act === 'open') {
+      if (id === songId && !dirty) return;
+      if (!confirmDiscard()) return;
+      const next = await library.load(id);
+      if (next) loadSong(next, id);
+      toast(t('file.loaded', { title }));
+    } else if (act === 'rename') {
+      const name = prompt(t('lib.renamePrompt'), meta.title);
+      if (name === null || !name.trim()) return;
+      await library.rename(id, name.trim());
+      if (id === songId) {
+        song.title = name.trim();
+        persist(true);
+        renderAll();
+      }
+    } else if (act === 'duplicate') {
+      await library.duplicate(id, t('lib.copySuffix'));
+    } else if (act === 'sounds') {
+      if (!confirm(t('lib.confirmSounds', { title }))) return;
+      const source = await library.load(id);
+      if (!source) return;
+      copySounds(song, source);
+      changed(true);
+      toast(t('lib.soundsToast', { title }));
+    } else if (act === 'delete') {
+      if (!confirm(t('lib.confirmDelete', { title }))) return;
+      await library.remove(id);
+      if (id === songId) {
+        songId = null;
+        dirty = true;
+        persist(true);
+        renderSongState();
+      }
+    }
+  } catch (err) {
+    toast(t('lib.error', { error: (err as Error).message }));
+  }
+  await refreshLibrary();
+}
+
+/** Adds song files and library backups (.zip) to the library; a single song is also opened. */
+async function importFiles(files: File[]) {
+  if (!library) return;
+  const songs: Song[] = [];
+  const failed: string[] = [];
+  for (const file of files) {
+    try {
+      if (/\.zip$/i.test(file.name)) {
+        const dec = new TextDecoder();
+        for (const entry of unzip(new Uint8Array(await file.arrayBuffer()))) {
+          if (!/\.json$/i.test(entry.name)) continue;
+          const text = typeof entry.data === 'string' ? entry.data : dec.decode(entry.data);
+          songs.push(parseSong(JSON.parse(text)));
+        }
+      } else {
+        songs.push(parseSong(JSON.parse(await file.text())));
+      }
+    } catch (err) {
+      failed.push(`${file.name}: ${(err as Error).message}`);
+    }
+  }
+  if (failed.length) toast(t('file.loadError', { error: failed.join(', ') }));
+  if (!songs.length) return;
+  const single = songs.length === 1 && files.length === 1 && !/\.zip$/i.test(files[0].name);
+  if (single && !confirmDiscard()) return;
+  try {
+    const metas = [];
+    for (const s of songs) metas.push(await library.save(s));
+    if (single) {
+      loadSong(songs[0], metas[0].id);
+      toast(t('file.loaded', { title: songs[0].title }));
+    } else if (!failed.length) {
+      toast(t('lib.imported', { count: songs.length }));
+    }
+  } catch (err) {
+    toast(t('lib.error', { error: (err as Error).message }));
+  }
+  await refreshLibrary();
+}
+
+/** Downloads every library song as a .gbt.json file in one ZIP. */
+async function backupLibrary() {
+  if (!library) return;
+  if (!libraryList.length) {
+    toast(t('lib.empty'));
+    return;
+  }
+  const songs = (await Promise.all(libraryList.map((m) => library!.load(m.id)))).filter((s): s is Song => !!s);
+  const names = uniqueNames(songs.map((s) => fileName(s.title)));
+  const data = zip(songs.map((s, i) => ({ name: `${names[i]}.gbt.json`, data: JSON.stringify(s) })));
+  download(`gb-tracker-library-${new Date().toISOString().slice(0, 10)}.zip`, data as BlobPart, 'application/zip');
+}
+
+void (async () => {
+  const opened = await openStore();
+  library = new SongLibrary(opened.store);
+  libraryPersistent = opened.persistent;
+  libraryList = await library.list();
+  if (restored && !session && !libraryList.length) {
+    // Songs from before the library existed: keep the working copy as the first library song.
+    const meta = await library.save(structuredClone(song));
+    songId = meta.id;
+    dirty = false;
+    persist(true);
+    libraryList = await library.list();
+  } else if (songId && !libraryList.some((m) => m.id === songId)) {
+    // Its entry was deleted (in another tab, say): the working copy is not in the library any more.
+    songId = null;
+    dirty = true;
+    persist(true);
+  }
+  renderSongState();
+  if ((tab as string) === 'file') renderPanel();
+})().catch((err) => toast(t('lib.error', { error: (err as Error).message })));
 
 function renderAll() {
   if (order >= song.order.length) order = song.order.length - 1;

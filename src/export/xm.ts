@@ -4,6 +4,7 @@
  * volume envelope for the hardware envelope and length counter.
  */
 import { noteFrequency } from '../tracker/notes';
+import { SAMPLE_RATE } from '../tracker/sample';
 import { Song } from '../tracker/song';
 import {
   MODULE_BPM,
@@ -11,10 +12,13 @@ import {
   Warnings,
   XM_UNITS,
   basePeriodLength,
+  SAMPLE_NOTE,
   convertPattern,
+  instrumentSample,
   instrumentVolume,
   instrumentWaveform,
   refKey,
+  sampleData,
   usedInstruments,
   volumeEnvelope,
 } from './module';
@@ -29,7 +33,12 @@ export const XM_KEY_OFF = 97;
  */
 export function xmTuning(periodLength: number): { relativeNote: number; finetune: number } {
   const n = 24; // C-4
-  const semis = 12 * Math.log2((noteFrequency(n) * periodLength) / 8363) - (n + XM_NOTE_OFFSET - 49);
+  return tuneTo(noteFrequency(n) * periodLength, n);
+}
+
+/** Relative note and finetune that play the sample at `rate` Hz at tracker note `n`. */
+export function tuneTo(rate: number, n: number): { relativeNote: number; finetune: number } {
+  const semis = 12 * Math.log2(rate / 8363) - (n + XM_NOTE_OFFSET - 49);
   let relativeNote = Math.floor(semis);
   let finetune = Math.round((semis - relativeNote) * 128);
   if (finetune > 127) {
@@ -111,7 +120,12 @@ export function encodeXm(song: Song): { data: Uint8Array; warnings: string[] } {
   for (const pat of song.patterns) {
     const cells = convertPattern(
       pat,
-      { units: XM_UNITS, instrumentNumber: (r) => numbers.get(refKey(r)) ?? 0, globalVolume: true },
+      {
+        units: XM_UNITS,
+        instrumentNumber: (r) => numbers.get(refKey(r)) ?? 0,
+        globalVolume: true,
+        isSample: (r) => instrumentSample(song, r) !== null,
+      },
       warn,
       () => 36,
     );
@@ -128,9 +142,10 @@ export function encodeXm(song: Song): { data: Uint8Array; warnings: string[] } {
     const ins =
       ref.kind === 'pulse' ? song.pulseInstruments[ref.index] : ref.kind === 'wave' ? song.waveInstruments[ref.index] : song.noiseInstruments[ref.index];
     if (ref.kind === 'pulse' && song.pulseInstruments[ref.index].sweepPeriod) warn.add('pitch sweeps');
-    const sample = instrumentWaveform(song, ref, 1);
+    const hex = instrumentSample(song, ref);
+    const sample = hex !== null ? sampleData(hex) : instrumentWaveform(song, ref, 1);
     const env = volumeEnvelope(song, ref);
-    const { relativeNote, finetune } = xmTuning(basePeriodLength(ref.kind));
+    const { relativeNote, finetune } = hex !== null ? tuneTo(SAMPLE_RATE, SAMPLE_NOTE) : xmTuning(basePeriodLength(ref.kind));
 
     w.u32(263);
     w.text(`${ref.kind[0].toUpperCase()}${(ref.index + 1).toString(16).toUpperCase()} ${ins.name}`, 22);
@@ -155,10 +170,10 @@ export function encodeXm(song: Song): { data: Uint8Array; warnings: string[] } {
 
     w.u32(sample.length);
     w.u32(0);
-    w.u32(sample.length);
+    w.u32(hex !== null ? 0 : sample.length);
     w.u8(instrumentVolume(song, ref));
     w.u8(finetune);
-    w.u8(1); // forward loop, 8-bit
+    w.u8(hex !== null ? 0 : 1); // one-shot sample, or a looped waveform; 8-bit
     w.u8(128);
     w.u8(relativeNote);
     w.u8(0);

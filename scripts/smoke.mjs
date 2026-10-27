@@ -10,9 +10,12 @@
  *   and on phones the bottom bar switches between the pattern, list and editor views;
  * - typing notes on the computer keyboard and tapping the on-screen piano and keypad change the song,
  *   and the song survives a reload (localStorage);
+ * - the song library saves (button and Ctrl+S), saves as, renames, duplicates, deletes and opens songs,
+ *   keeps them across a reload (IndexedDB), and its ZIP backup imports again;
  * - every export (song JSON, WAV, FLAC, stems, VGM, GBS, ROM, XM, MOD, GBDK zip) hands over a file with the right
  *   header;
  * - the theme button cycles auto, light and dark;
+ * - the About dialog shows version and links, its mini game runs, and its keys stay out of the tracker;
  * - German, Spanish and French browsers get their UI language, still without sideways scrolling;
  * - the manual page loads its sections, contents list and images on desktop and phone;
  * - the scope traces stay centred while playing (Chromium) and the piano keys keep their size at every octave.
@@ -276,6 +279,68 @@ await check('keyboard note entry is saved and survives a reload', async () => {
   }
 });
 
+await check('song library saves, renames, duplicates, deletes and backs up songs', async () => {
+  const { context, page, errors } = await open(desktop);
+  try {
+    const rows = () => page.locator('#lib-list .lib-row');
+    const titles = () => page.$$eval('#lib-list .lib-title', (els) => els.map((e) => e.textContent).sort());
+    const state = () => page.locator('#f-state').getAttribute('data-state');
+    const row = (title) => rows().filter({ has: page.locator('.lib-title', { hasText: new RegExp(`^${title}$`) }) });
+    const answer = (text) => page.once('dialog', (d) => d.accept(text));
+
+    await page.locator('.tabs [data-tab="file"]').click();
+    await page.waitForSelector('#lib-list .hint, #lib-list .lib-row');
+    assert((await state()) === 'notInLibrary', `a fresh demo is ${await state()}`);
+    await page.locator('#f-store').click();
+    await rows().first().waitFor();
+    assert((await state()) === 'saved', `after Save the song is ${await state()}`);
+
+    // Editing marks the song unsaved; Ctrl+S saves it again.
+    await page.locator('.tabs [data-tab="song"]').click();
+    await page.locator('#s-title').fill('Smoke song');
+    assert(await page.locator('.tabs [data-tab="file"].dirty').count(), 'the FILE tab shows no unsaved dot');
+    await page.locator('#pattern').focus();
+    await page.keyboard.press('Control+s');
+    await page.locator('.tabs [data-tab="file"]:not(.dirty)').waitFor();
+    await page.locator('.tabs [data-tab="file"]').click();
+    assert((await titles()).join() === 'Smoke song', `library holds ${(await titles()).join(', ')}`);
+
+    answer('Second');
+    await page.locator('#f-saveas').click();
+    await rows().nth(1).waitFor();
+    assert((await row('Second').getAttribute('aria-current')) === 'true', 'Save as did not switch to the copy');
+
+    answer('Renamed');
+    await row('Smoke song').locator('[data-act="rename"]').click();
+    await row('Renamed').waitFor();
+    await row('Renamed').locator('[data-act="duplicate"]').click();
+    await row('Renamed \\(copy\\)').waitFor();
+    answer();
+    await row('Renamed \\(copy\\)').locator('[data-act="delete"]').click();
+    await row('Renamed \\(copy\\)').waitFor({ state: 'detached' });
+    assert((await titles()).join() === 'Renamed,Second', `library holds ${(await titles()).join(', ')}`);
+
+    // The library and the open song survive a reload.
+    await page.reload({ waitUntil: 'load' });
+    await page.locator('.tabs [data-tab="file"]').click();
+    await rows().nth(1).waitFor();
+    assert((await row('Second').getAttribute('aria-current')) === 'true', 'after a reload Second is not open');
+    assert((await state()) === 'saved', `after a reload the song is ${await state()}`);
+    await row('Renamed').locator('.lib-open').click();
+    await page.locator('.current-song strong', { hasText: 'Renamed' }).waitFor();
+
+    const backup = await download(page, 'f-backup');
+    assert(/\.zip$/.test(backup.name) && backup.bytes.subarray(0, 2).toString('latin1') === 'PK', `backup is ${backup.name}`);
+    assert(backup.bytes.includes('Renamed.gbt.json') && backup.bytes.includes('Second.gbt.json'), 'backup misses songs');
+    await page.locator('#f-input').setInputFiles({ name: backup.name, mimeType: 'application/zip', buffer: backup.bytes });
+    await rows().nth(3).waitFor();
+    assert((await titles()).join() === 'Renamed,Renamed,Second,Second', `after import: ${(await titles()).join(', ')}`);
+    assert(errors.length === 0, `errors: ${errors.join(' | ')}`);
+  } finally {
+    await context.close();
+  }
+});
+
 async function download(page, id, timeout = 20000) {
   const pending = page.waitForEvent('download', { timeout });
   await page.locator(`#${id}`).click();
@@ -316,6 +381,53 @@ await check('every export hands over a valid file', async () => {
   }
 });
 
+/** A mono 16-bit WAV file of `seconds` of `fn(t)` (t in seconds). */
+function wavFile(name, seconds, fn, rate = 22050) {
+  const n = Math.round(seconds * rate);
+  const b = Buffer.alloc(44 + n * 2);
+  b.write('RIFF', 0, 'latin1');
+  b.writeUInt32LE(36 + n * 2, 4);
+  b.write('WAVEfmt ', 8, 'latin1');
+  b.writeUInt32LE(16, 16);
+  b.writeUInt16LE(1, 20);
+  b.writeUInt16LE(1, 22);
+  b.writeUInt32LE(rate, 24);
+  b.writeUInt32LE(rate * 2, 28);
+  b.writeUInt16LE(2, 32);
+  b.writeUInt16LE(16, 34);
+  b.write('data', 36, 'latin1');
+  b.writeUInt32LE(n * 2, 40);
+  for (let i = 0; i < n; i++) b.writeInt16LE(Math.round(20000 * fn(i / rate)), 44 + i * 2);
+  return { name, mimeType: 'audio/wav', buffer: b };
+}
+
+await check('audio imports as a waveform and as a sample that goes into the exports', async () => {
+  const { context, page, errors } = await open(desktop);
+  try {
+    await page.locator('.tabs [data-tab="wave"]').click();
+    const hexBefore = await page.inputValue('#w-hex');
+    await page.setInputFiles('#w-file', wavFile('organ.wav', 0.5, (t) => Math.sin(2 * Math.PI * 220 * t) + 0.5 * Math.sin(2 * Math.PI * 660 * t)));
+    await page.waitForFunction((before) => document.querySelector('#w-hex')?.value !== before, hexBefore);
+    await page.setInputFiles('#s-file', wavFile('kick.wav', 0.3, (t) => Math.exp(-t * 15) * Math.sin(2 * Math.PI * (60 + 200 * Math.exp(-t * 40)) * t)));
+    await page.waitForSelector('[data-splay="0"]');
+    await page.locator('[data-splay="0"]').click();
+    await page.locator('.tabs [data-tab="inst"]').click();
+    await page.locator('[data-kind="wave"]').click();
+    await page.selectOption('#i-sample', '0');
+    const song = JSON.parse(await storedSong(page));
+    assert(song.samples?.length === 1 && song.samples[0].name === 'kick', `samples: ${JSON.stringify(song.samples?.map((x) => x.name))}`);
+    assert(Math.abs(song.samples[0].data.length / 7936 - 0.3) < 0.05, `sample length ${song.samples[0].data.length}`);
+    assert(song.waveInstruments[0].sample === 0, 'the wave instrument does not use the sample');
+    // GBS files of songs with samples run from the timer at 256 Hz.
+    await page.locator('.tabs [data-tab="file"]').click();
+    const gbs = await download(page, 'x-gbs', 120000);
+    assert(gbs.bytes[0x0e] === 0xc0 && gbs.bytes[0x0f] === 0x07, `GBS timer ${gbs.bytes[0x0e]}/${gbs.bytes[0x0f]}`);
+    assert(errors.length === 0, `errors: ${errors.join(' | ')}`);
+  } finally {
+    await context.close();
+  }
+});
+
 await check('theme button cycles auto, light and dark', async () => {
   const { context, page, errors } = await open(desktop);
   try {
@@ -333,6 +445,44 @@ await check('theme button cycles auto, light and dark', async () => {
 });
 
 const phone = screens.find((s) => s.hasTouch && (s.viewport?.width ?? 0) < 760);
+
+await check('About dialog opens, its mini game runs and keys stay out of the tracker', async () => {
+  for (const screen of [desktop, phone]) {
+    const touch = !!screen.hasTouch;
+    const { context, page, errors } = await open(screen);
+    try {
+      if (touch) await press(page, page.locator('.mobile-nav [data-view="edit"]'), touch);
+      await press(page, page.locator('.tabs [data-tab="help"]'), touch);
+      const rec = await page.locator('#rec').getAttribute('aria-pressed');
+      await press(page, page.locator('#about-open'), touch);
+      const dialog = page.locator('dialog#about');
+      await dialog.waitFor({ state: 'visible' });
+      assert(/^Version \d+\.\d+\.\d+/.test(await page.locator('#about-version').textContent()), 'no version shown');
+      assert((await page.locator('#about-repo').getAttribute('href')).includes('github.com/wirehack7/Gameboy-Tracker'), 'no repo link');
+      assert((await page.locator('#about-manual').getAttribute('href')) === './manual.html', 'no manual link');
+      const box = await dialog.boundingBox();
+      const width = page.viewportSize().width;
+      assert(box.x >= 0 && box.x + box.width <= width + 1, `${screen.name}: the dialog does not fit (${box.width}px)`);
+      assert(await page.locator('#about-lcd').isVisible(), 'the game screen is not shown');
+      assert((await dialog.getAttribute('data-game')) === 'ready', 'the game does not wait for A');
+      // Desktop jumps with Space, which must not start the song behind the dialog; phones tap A.
+      if (touch) await press(page, page.locator('#about-jump'), touch);
+      else await page.keyboard.press('Space');
+      await page.waitForFunction(() => document.querySelector('#about')?.dataset.game !== 'ready');
+      await page.waitForFunction(() => Number(document.querySelector('#about-score')?.textContent) > 3, null, { timeout: 10000 });
+      assert((await page.locator('#play-song').getAttribute('aria-pressed')) !== 'true', 'Space in the game started the song');
+      if (shots) await page.screenshot({ path: join(shots, `${engine}-${screen.name}-about.png`) });
+      // Esc closes the dialog and must not toggle record mode in the tracker.
+      if (touch) await press(page, page.locator('#about-close'), touch);
+      else await page.keyboard.press('Escape');
+      await dialog.waitFor({ state: 'hidden' });
+      assert((await page.locator('#rec').getAttribute('aria-pressed')) === rec, 'closing the dialog toggled record mode');
+      assert(errors.length === 0, `errors: ${errors.join(' | ')}`);
+    } finally {
+      await context.close();
+    }
+  }
+});
 
 for (const [locale, lang] of [['de-DE', 'de'], ['es-ES', 'es'], ['fr-FR', 'fr']]) {
   await check(`${locale} browser gets the ${lang} UI and it fits a phone`, async () => {

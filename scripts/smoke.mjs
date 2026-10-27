@@ -12,7 +12,9 @@
  *   and the song survives a reload (localStorage);
  * - every export (song JSON, WAV, VGM, GBS, ROM, GBDK zip) hands over a file with the right
  *   header;
- * - the theme button cycles auto, light and dark.
+ * - the theme button cycles auto, light and dark;
+ * - German, Spanish and French browsers get their UI language, still without sideways scrolling;
+ * - the manual page loads its sections, contents list and images on desktop and phone.
  *
  * Headless Firefox and WebKit on CI have no sound device and their audio clock may never run,
  * so the check that the play cursor moves through the rows runs in Chromium only.
@@ -61,11 +63,11 @@ const screens =
 
 const failures = [];
 
-async function open(screen) {
+async function open(screen, { locale = 'en-US', path = '', ready = '#pattern .prow' } = {}) {
   const { name, defaultBrowserType, ...options } = screen;
   // Firefox has no mobile emulation; touch and the small viewport still apply.
   if (engine === 'firefox') delete options.isMobile;
-  const context = await browser.newContext({ locale: 'en-US', serviceWorkers: 'block', acceptDownloads: true, ...options });
+  const context = await browser.newContext({ locale, serviceWorkers: 'block', acceptDownloads: true, ...options });
   // Without this, an action that never completes (such as a tap) waits forever.
   context.setDefaultTimeout(15000);
   const page = await context.newPage();
@@ -74,14 +76,23 @@ async function open(screen) {
   const unload = /Navigated away from page/;
   page.on('pageerror', (e) => unload.test(e.message) || errors.push(e.message));
   page.on('console', (m) => m.type() === 'error' && !unload.test(m.text()) && errors.push(m.text()));
-  await page.goto(base, { waitUntil: 'load' });
-  await page.waitForSelector('#pattern .prow');
+  await page.goto(base + path, { waitUntil: 'load' });
+  await page.waitForSelector(ready);
   return { context, page, errors };
+}
+
+/** Rejects when `promise` takes longer than `ms`: a hung browser call must fail, not stall CI. */
+function within(ms, promise) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`took longer than ${ms / 1000} s`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
 async function check(name, run) {
   try {
-    await run();
+    await within(180000, run());
     console.log(`ok   ${name}`);
   } catch (e) {
     failures.push(name);
@@ -280,6 +291,54 @@ await check('theme button cycles auto, light and dark', async () => {
     assert(errors.length === 0, `errors: ${errors.join(' | ')}`);
   } finally {
     await context.close();
+  }
+});
+
+const phone = screens.find((s) => s.hasTouch && (s.viewport?.width ?? 0) < 760);
+
+for (const [locale, lang] of [['de-DE', 'de'], ['es-ES', 'es'], ['fr-FR', 'fr']]) {
+  await check(`${locale} browser gets the ${lang} UI and it fits a phone`, async () => {
+    for (const screen of [desktop, phone]) {
+      const { context, page, errors } = await open(screen, { locale });
+      try {
+        const got = await page.evaluate(() => document.documentElement.lang);
+        assert(got === lang, `${screen.name}: page language is ${got}`);
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+        assert(overflow <= 1, `${screen.name}: page scrolls sideways by ${overflow}px`);
+        if (shots) await page.screenshot({ path: join(shots, `${engine}-${screen.name}-${lang}.png`) });
+        assert(errors.length === 0, `errors: ${errors.join(' | ')}`);
+      } finally {
+        await context.close();
+      }
+    }
+  });
+}
+
+await check('manual loads with its contents and images', async () => {
+  for (const screen of [desktop, phone]) {
+    const { context, page, errors } = await open(screen, { path: 'manual.html', ready: '.m-doc h2' });
+    try {
+      const { headings, links, images } = await page.evaluate(() => ({
+        headings: document.querySelectorAll('.m-doc h2').length,
+        links: document.querySelectorAll('#m-nav a').length,
+        // The images load lazily, so fetch them instead of waiting for them to scroll into view.
+        images: [...document.querySelectorAll('.m-doc img')].map((img) => img.src),
+      }));
+      const broken = [];
+      for (const src of images) {
+        const res = await page.request.get(src);
+        if (!res.ok() || !/^image\//.test(res.headers()['content-type'] ?? '')) broken.push(src);
+      }
+      assert(headings >= 3, `${screen.name}: the manual has only ${headings} sections`);
+      assert(links >= 3, `${screen.name}: the contents list has only ${links} links`);
+      assert(broken.length === 0, `${screen.name}: images do not load: ${broken.join(', ')}`);
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      assert(overflow <= 1, `${screen.name}: the manual scrolls sideways by ${overflow}px`);
+      if (shots) await page.screenshot({ path: join(shots, `${engine}-${screen.name}-manual.png`) });
+      assert(errors.length === 0, `errors: ${errors.join(' | ')}`);
+    } finally {
+      await context.close();
+    }
   }
 });
 

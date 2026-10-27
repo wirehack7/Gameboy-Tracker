@@ -6,6 +6,8 @@ oscillators. What the tracker plays are the same register writes a sound driver 
 
 **Live:** https://wirehack7.github.io/Gameboy-Tracker/
 
+**Manual:** [docs/MANUAL.md](docs/MANUAL.md), also on the site: https://wirehack7.github.io/Gameboy-Tracker/manual.html
+
 What comes next is in the [roadmap](ROADMAP.md).
 
 ## Features
@@ -21,6 +23,7 @@ What comes next is in the [roadmap](ROADMAP.md).
 - Responsive: desktop with side lists, tablet two-column, phone with views and an on-screen keypad
 - On-screen piano (mouse, touch, glissando) and Web MIDI input from any connected keyboard
 - Master volume for playback
+- Interface in English, German, Spanish and French (picked from the browser language, switchable in the toolbar)
 
 ## Exports
 
@@ -61,13 +64,29 @@ npm run build   # production build into dist/
 npm run smoke   # browser smoke test of dist/ (add --firefox or --webkit)
 ```
 
-`npm run smoke` serves the built site and drives it with Playwright: at desktop, tablet and phone sizes
+`npm run smoke` serves the built site and drives it with Playwright. At desktop, tablet and phone sizes
 (in WebKit: emulated iPhones and an iPad) it checks that the tracker loads without errors or sideways
-scrolling, that playback starts and stops, that the phone view switcher, the on-screen piano and the keypad work (and leave the pattern room on small and sideways phones), that
-typed notes are saved and survive a reload, and that every export hands over a file with the right header.
-An optional folder argument collects screenshots. CI runs it in Chromium, Firefox and WebKit.
+scrolling, that playback starts and stops, that the phone view switcher, the on-screen piano and the keypad
+work and leave the pattern room on small and sideways phones, that typed notes are saved and survive a
+reload, and that every export hands over a file with the right header. It also checks that German, Spanish
+and French browsers get their UI language without breaking the layout, and that the manual loads with its
+contents and images. An optional folder argument collects screenshots. CI runs it in Chromium, Firefox and
+WebKit.
 
 Every push to `main` is tested, built and published to GitHub Pages by GitHub Actions.
+
+### Translations
+
+UI strings live in `src/i18n/locales/`. English (`en.ts`) is the base locale and defines every key;
+other locales may lag behind and fall back to English. To add a string, add a key to `en.ts` and use
+`t('key')` in code (or `data-i18n`, `data-i18n-title`, `data-i18n-aria-label` in static markup).
+To add a language, create `locales/<code>.ts` and register it in `LOCALES` in `src/i18n/index.ts`.
+
+### Manual
+
+The manual is written in `docs/MANUAL.md`; the build renders it into `manual.html` on the site
+(`src/manual/`). `tests/docs/manual.test.ts` fails when an effect, export button or tab is missing from the
+manual, so update it in the same PR as the feature.
 
 ## Hardware coverage
 

@@ -18,7 +18,7 @@ What comes next is in the [roadmap](ROADMAP.md).
 - DMG or GBC mode per song
 - Oscilloscope per channel, click to mute
 - Save as JSON, automatic backup in the browser
-- Exports: playable Game Boy ROM (.gb/.gbc), GBS, VGM, WAV, and a GBDK-2020 project (C array + tiny driver + Makefile)
+- Exports: playable Game Boy ROM (.gb/.gbc), GBS, XM, MOD, VGM, WAV, and a GBDK-2020 project (C array + tiny driver + Makefile)
 - Full-window tracker layout in Game Boy colours (off-white, A/B-button red) with colour-coded pattern columns, light and dark mode
 - Responsive: desktop with side lists, tablet two-column, phone with views and an on-screen keypad
 - On-screen piano (mouse, touch, glissando) and Web MIDI input from any connected keyboard
@@ -37,6 +37,10 @@ the tests check.
 - **Game Boy ROM (.gb / .gbc):** a cartridge image that plays the song in a loop and shows title, author, model
   and a play timer. It boots on real hardware, flash carts and emulators. Songs longer than one 16 KiB bank use
   MBC5 banking. CGB songs get the CGB flag and a white/red palette.
+- **XM / MOD:** FastTracker 2 and ProTracker modules for other trackers. Instruments become samples (one period
+  of the pulse or wave, or the LFSR noise sequence) tuned to the exact pitch; XM gets volume envelopes, MOD gets
+  them rendered into the samples. Effects are translated; what cannot be expressed is listed after the export.
+  CI cross-checks both formats with libopenmpt (patterns, length and the pitch of rendered notes).
 - **GBS:** Game Boy Sound System v1 for music players (VBlank rate). Same driver as the ROM.
 - **VGM:** VGM 1.71 with the Game Boy DMG chip, including loop point and GD3 tags.
 - **WAV:** 16-bit stereo, rendered by the emulator.
@@ -61,7 +65,17 @@ npm install
 npm run dev     # development server
 npm test        # hardware and player tests
 npm run build   # production build into dist/
+npm run smoke   # browser smoke test of dist/ (add --firefox or --webkit)
 ```
+
+`npm run smoke` serves the built site and drives it with Playwright. At desktop, tablet and phone sizes
+(in WebKit: emulated iPhones and an iPad) it checks that the tracker loads without errors or sideways
+scrolling, that playback starts and stops, that the phone view switcher, the on-screen piano and the keypad
+work and leave the pattern room on small and sideways phones, that typed notes are saved and survive a
+reload, and that every export hands over a file with the right header. It also checks that German, Spanish
+and French browsers get their UI language without breaking the layout, and that the manual loads with its
+contents and images. An optional folder argument collects screenshots. CI runs it in Chromium, Firefox and
+WebKit.
 
 Every push to `main` is tested, built and published to GitHub Pages by GitHub Actions.
 

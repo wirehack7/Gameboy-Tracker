@@ -5,6 +5,8 @@ import { demoSong } from './tracker/demo';
 import { gbdkProject } from './export/gbdk';
 import { captureStream } from './export/stream';
 import { buildGbs, buildRom, romExtension } from './export/rom';
+import { encodeMod } from './export/mod';
+import { encodeXm } from './export/xm';
 import { encodeVgm } from './export/vgm';
 import { encodeWav, renderSong } from './export/wav';
 import { MidiInput, MidiStatus, midiToNote } from './input/midi';
@@ -1283,6 +1285,8 @@ function renderFilePanel() {
       <button type="button" class="btn" id="x-vgm">${t('export.vgm')}</button>
       <button type="button" class="btn" id="x-gbs">${t('export.gbs')}</button>
       <button type="button" class="btn" id="x-rom">${t('export.rom')}</button>
+      <button type="button" class="btn" id="x-xm">${t('export.xm')}</button>
+      <button type="button" class="btn" id="x-mod">${t('export.mod')}</button>
       <button type="button" class="btn" id="x-gbdk">${t('export.gbdk')}</button>
     </div>
     <p class="hint" id="x-status">${t('export.hint')}</p>`;
@@ -1330,11 +1334,12 @@ function renderFilePanel() {
     const vgm = encodeVgm(captureStream(structuredClone(song)), { title: song.title, author: song.author });
     download(`${fileBase()}.vgm`, vgm as BlobPart, 'application/octet-stream');
   });
-  const exportBinary = (build: () => { name: string; data: Uint8Array }) => {
+  const exportBinary = (build: () => { name: string; data: Uint8Array; warnings?: string[] }) => {
     try {
-      const { name, data } = build();
+      const { name, data, warnings } = build();
       download(name, data as BlobPart, 'application/octet-stream');
       $('x-status').textContent = t('export.size', { name, bytes: data.length });
+      if (warnings?.length) $('x-status').textContent += ` ${t('export.approxHint', { list: warnings.join(', ') })}`;
     } catch (err) {
       $('x-status').textContent = (err as Error).message;
     }
@@ -1344,6 +1349,12 @@ function renderFilePanel() {
   );
   $('x-rom').addEventListener('click', () =>
     exportBinary(() => ({ name: `${fileBase()}.${romExtension(song)}`, data: buildRom(structuredClone(song)).data })),
+  );
+  $('x-xm').addEventListener('click', () =>
+    exportBinary(() => ({ name: `${fileBase()}.xm`, ...encodeXm(structuredClone(song)) })),
+  );
+  $('x-mod').addEventListener('click', () =>
+    exportBinary(() => ({ name: `${fileBase()}.mod`, ...encodeMod(structuredClone(song)) })),
   );
   $('x-gbdk').addEventListener('click', () => {
     const { zip, name, size } = gbdkProject(structuredClone(song));

@@ -144,12 +144,15 @@ export const es: Translation = {
   'export.vgm': 'Exportar VGM',
   'export.gbs': 'Exportar GBS',
   'export.rom': 'ROM de Game Boy',
+  'export.xm': 'Exportar XM',
+  'export.mod': 'Exportar MOD',
   'export.gbdk': 'Proyecto GBDK (.zip)',
   'export.hint':
-    'ROM: funciona en hardware y emuladores (.gb, o .gbc para canciones CGB). GBS y VGM se reproducen en reproductores de música. GBDK: array en C del flujo de registros, un pequeño driver en C y un Makefile. Más formatos (XM, MOD, vídeo) están en la hoja de ruta.',
+    'ROM: funciona en hardware y emuladores (.gb, o .gbc para canciones CGB). GBS y VGM se reproducen en reproductores de música. GBDK: array en C del flujo de registros, un pequeño driver en C y un Makefile. XM y MOD se abren en otros trackers (los instrumentos se convierten en samples). El vídeo está en la hoja de ruta.',
   'export.rendering': 'Renderizando… {seconds} s',
   'export.wavReady': 'WAV listo ({seconds} s).',
   'export.size': '{name}: {bytes} bytes.',
+  'export.approxHint': 'Aproximado: {list}.',
   'export.gbdkReady': 'Proyecto GBDK listo: {bytes} bytes de datos de la canción.',
 
   // help panel

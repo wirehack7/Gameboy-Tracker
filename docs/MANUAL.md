@@ -480,6 +480,8 @@ song. Tests in the repository check this sample for sample.
 | Export VGM | `.vgm` | Video game music players such as VGMPlay, or foobar2000 and Winamp with a VGM plugin. VGM 1.71 with the Game Boy DMG chip, loop point, and title/author tags. |
 | Export GBS | `.gbs` | Game Boy music players (GBS v1). Title and author are in the header. |
 | Game Boy ROM | `.gb` / `.gbc` | Playing on a real Game Boy (flash cart), on a Game Boy Color, or in an emulator. |
+| Export XM | `.xm` | Opening the song in other trackers (FastTracker 2, OpenMPT, MilkyTracker, …), see [XM and MOD](#xm-and-mod). |
+| Export MOD | `.mod` | ProTracker and everything that plays Amiga modules, see [XM and MOD](#xm-and-mod). |
 | GBDK project (.zip) | `<name>_gbdk.zip` | Using the music in your own game, see [GBDK](#using-the-music-in-a-gbdk-game). |
 
 ### Game Boy ROM
@@ -492,6 +494,30 @@ Songs that do not fit into a 32 KiB ROM are stored over several banks of an MBC5
 
 GBS files contain the same player as the ROM and are called once per frame (VBlank timing). They play in GBS
 players and in many multi-format music players.
+
+### XM and MOD
+
+XM and MOD are sample-based, so the Game Boy sound is rebuilt from samples. Notes play at exactly the
+tracker's pitch (the tests check this against libopenmpt, the engine of OpenMPT).
+
+- **Instruments become samples:** a pulse instrument is one period of its duty cycle, a wave instrument one
+  period of its waveform, a noise instrument the noise channel's random sequence (15 or 7 bit). Only the
+  instruments the song uses are exported, named `P1`, `W3`, `N2` … after their channel type and number.
+- **Envelopes:** XM gets a volume envelope that follows the hardware envelope and the length counter. MOD
+  has no envelopes, so a fading or length-limited instrument is rendered into its sample (exact at the note the
+  instrument plays most).
+- **Tempo:** one row tick is one frame, as on the Game Boy (speed from the song, 149 BPM ≈ 59.6 ticks per
+  second).
+- **Effects:** arpeggio, slides, portamento, vibrato, volume slide, jump, break, cut, delay and speed are
+  translated; pitch slides are converted from Game Boy period steps to semitones at the note being played.
+  The volume column becomes the XM volume column (MOD: `Cxx` when the effect column is free). `8xx` pans all
+  channels as on the Game Boy. `5xx` becomes the XM global volume (`Gxx`).
+- **What is approximated:** `9xx` (duty and waveform changes), pitch sweeps, envelope changes with `Cxy`,
+  `5xx` in MOD and anything that needs a second effect column. After the export the FILE tab lists what was
+  approximated and how often.
+- **MOD only:** MOD has three octaves, so each sample is stretched or shortened by octaves to fit the notes the
+  instrument plays; notes still outside the range move by octaves. Patterns longer than 64 rows are split. MOD
+  allows 31 samples.
 
 ## Using the music in a GBDK game
 
@@ -584,8 +610,12 @@ format is simple enough to play from an assembly driver (for example in RGBDS) i
 
 These are planned and listed in the [roadmap](https://github.com/wirehack7/Gameboy-Tracker/blob/main/ROADMAP.md):
 
+<<<<<<< HEAD
+- XM and MOD import
+=======
 - XM and MOD export and import
 - Sample playback (drum kits, voices) on the wave channel
+>>>>>>> 53b260d (Import a waveform for the wave channel from an audio file)
 - Video export with scopes and scrolling patterns, more audio formats
 - Undo/redo, block copy and paste
 - Instrument macros (per-tick tables)

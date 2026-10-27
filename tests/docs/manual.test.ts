@@ -38,6 +38,14 @@ describe('manual', () => {
     for (const label of labels) expect(manual, label).toContain(label);
   });
 
+  it('names every toolbar button', () => {
+    const labels = [...mainSource.matchAll(/class="pill-btn" id="[\w-]+" type="button"[^>]*>([^<]+)<\/button>/g)].map(
+      (m) => m[1],
+    );
+    expect(labels.length).toBeGreaterThan(1);
+    for (const label of labels) expect(manual, label).toContain(`**${label}**`);
+  });
+
   it('names every tab and mobile view', () => {
     const tabs = [...mainSource.matchAll(/data-(?:tab|view)="\w+">([^<]+)<\/button>/g)].map((m) => m[1]);
     expect(tabs.length).toBeGreaterThan(5);

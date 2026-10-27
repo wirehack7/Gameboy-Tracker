@@ -16,6 +16,7 @@ sounds right in the tracker sounds the same on hardware, in the exported ROM and
 - [Entering notes and values](#entering-notes-and-values)
 - [Keyboard shortcuts](#keyboard-shortcuts)
 - [Touch and phone use](#touch-and-phone-use)
+- [On-screen piano and MIDI keyboards](#on-screen-piano-and-midi-keyboards)
 - [Song structure: order list and patterns](#song-structure-order-list-and-patterns)
 - [Instruments](#instruments)
 - [Waveforms](#waveforms)
@@ -37,6 +38,8 @@ sounds right in the tracker sounds the same on hardware, in the exported ROM and
 3. With the cursor in a note column, play notes on your computer keyboard: the bottom letter row
    (`Z S X D C V G B H N J M`) is one octave like a piano, the row above (`Q 2 W 3 E R 5 T 6 Y 7 U`) the next
    octave. Each note is written into the pattern and the cursor moves down by the edit step.
+   No computer keyboard? Use the on-screen piano under the pattern, or plug in a MIDI keyboard and press
+   **MIDI**.
 4. Change the current octave with `[` and `]`, the instrument with the **INS** arrows in the toolbar.
 5. Open the **INSTR** tab on the right to shape the sound, **FILE** to save your song or export it.
 
@@ -61,7 +64,9 @@ Your work is saved in the browser automatically after every change.
 | STEP | Edit step: how many rows the cursor moves after an entry (0–16). |
 | SPD | Song speed in ticks per row (1–31), see [Speed and tempo](#speed-and-tempo). |
 | DMG / GBC | Hardware model of the song (change it in the SONG tab). |
-| VOL | Master volume of the browser playback. Exports are not affected. |
+| KEYS | Shows or hides the on-screen piano under the pattern. |
+| MIDI | Turns MIDI input on or off. While on, it shows the number of connected inputs. |
+| VOL | Master volume of the browser playback (default 35). Exports are not affected. |
 | Theme | Cycles between automatic (follows the system), light and dark. |
 
 **Left sidebar**
@@ -75,6 +80,7 @@ Your work is saved in the browser automatically after every change.
 
 - **Channel header** with an oscilloscope and a mute button (**M**) for each of the four channels.
 - **Pattern** with one row per line and four channels side by side.
+- **Piano** under the pattern (toggle with **KEYS**), see [On-screen piano](#on-screen-piano-and-midi-keyboards).
 
 **Right sidebar tabs**
 
@@ -194,8 +200,8 @@ On a phone the tracker shows one view at a time. Switch with the bar at the bott
 
 Tap a field in the pattern to put the cursor there. The keypad below the pattern changes with the column:
 
-- On a **note column** it shows the twelve notes of the current octave, **OCT−** / **OCT+**, **OFF** (note off)
-  and **DEL**.
+- On a **note column** it shows **OCT−** / **OCT+**, **OFF** (note off) and **DEL**, plus the twelve notes of the
+  current octave when the on-screen piano is hidden. With the piano shown, play the notes on the piano.
 - On **other columns** it shows the hex digits `0`–`F` and **DEL**.
 - The bottom row moves the cursor: **◀ ▶** previous / next column, **▲ ▼** previous / next row.
 
@@ -203,6 +209,42 @@ Notes sound while you hold the key. On narrow screens the pattern scrolls sidewa
 with it.
 
 Tip: add the page to your home screen for a full-screen tracker without browser bars.
+
+## On-screen piano and MIDI keyboards
+
+### On-screen piano
+
+**KEYS** in the toolbar shows or hides a piano keyboard under the pattern. The tracker remembers the setting.
+
+- The piano starts at C of the current octave (**OCT**, `[` `]`) and shows as many octaves as fit the
+  width of the window (up to 4).
+- With the cursor on a **note column**, pressing a key enters the note and plays it, like a note key on the
+  computer keyboard. On any other column the key only plays the note, so you can try out melodies without
+  changing the pattern.
+- Sliding across the keys (with the mouse button or finger held) plays each key you pass, without entering
+  anything. Only the first key you pressed is entered.
+- The note sounds while you hold the key, with the current instrument on the channel under the cursor. The key
+  being played is highlighted.
+
+### MIDI keyboards
+
+Any MIDI keyboard or controller connected to the computer (USB, or Bluetooth MIDI set up in the system) can play
+and enter notes.
+
+1. Connect the keyboard, then press **MIDI** in the toolbar. The browser asks for permission the first time.
+2. The button now shows the number of inputs, for example **MIDI 1**. Hover over it to see their names.
+   Devices plugged in later are picked up automatically.
+3. Play: notes follow the same rules as the on-screen piano. On a note column a key enters the note, elsewhere it
+   only plays it. A note sounds until you release all keys.
+
+MIDI listens on all inputs and all MIDI channels; velocity is ignored, the volume comes from the instrument.
+MIDI note 60 (middle C) is **C-4** in the tracker, so the tracker's range C-2 to B-8 is MIDI 36 to 119; notes
+outside it are ignored.
+
+The tracker remembers that MIDI was on and turns it on again next time. Press **MIDI** again to turn it off.
+
+Web MIDI works in Chrome, Edge, Opera and Firefox on desktop and in Chrome on Android. Safari (macOS and iOS)
+does not support it; the button then explains this when you hover over it or press it.
 
 ## Song structure: order list and patterns
 
@@ -520,7 +562,6 @@ These are planned and listed in the [roadmap](https://github.com/wirehack7/Gameb
 - Video export with scopes and scrolling patterns, more audio formats
 - Undo/redo, block copy and paste
 - Instrument macros (per-tick tables)
-- MIDI input and an on-screen piano keyboard
 - Offline use as an installable app (PWA)
 
 This manual is updated together with the tracker. Found a mistake or something missing? Open an issue at

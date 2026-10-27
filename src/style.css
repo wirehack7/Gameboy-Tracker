@@ -1,116 +1,4 @@
-:root {
-  color-scheme: light;
-  --bg: #e4e0d7;
-  --surface: #f1eee8;
-  --surface-2: #dcd7cc;
-  --line: #c7c1b4;
-  --ink: #26262e;
-  --ink-soft: #6b6873;
-  --accent: #a3224f;
-  --accent-hi: #bd3968;
-  --accent-ink: #fbf2f5;
-  --navy: #2b2f86;
-  --pill: #8b8790;
-  --pill-ink: #f4f2f6;
-  --field: #faf9f6;
-  --focus: #2b2f86;
-  --stripe-a: #8e2e5c;
-  --stripe-b: #2e3080;
-
-  --pat-bg: #f8f6f1;
-  --pat-beat: #efebe2;
-  --pat-bar: #e5e0d4;
-  --pat-cursor-row: #f2dde5;
-  --pat-play: #a3224f;
-  --pat-play-ink: #fbf2f5;
-  --c-num: #9a958b;
-  --c-note: #23288a;
-  --c-off: #8b8790;
-  --c-inst: #a3224f;
-  --c-vol: #2d7a31;
-  --c-fx: #b25700;
-  --c-param: #7a4a12;
-  --c-empty: #c9c4b9;
-
-  --lcd-bg: #b4c27c;
-  --lcd-ink: #1f2b17;
-  --lcd-dim: #6f7f48;
-
-  --mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;
-  --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    color-scheme: dark;
-    --bg: #1b1b1f;
-    --surface: #25252a;
-    --surface-2: #303036;
-    --line: #3b3b43;
-    --ink: #ebe7de;
-    --ink-soft: #9e9aa5;
-    --accent: #cf4479;
-    --accent-hi: #e25a8e;
-    --accent-ink: #fff4f8;
-    --navy: #a7acff;
-    --pill: #4f4c55;
-    --pill-ink: #ebe7de;
-    --field: #1e1e22;
-    --focus: #a7acff;
-    --pat-bg: #18181b;
-    --pat-beat: #202025;
-    --pat-bar: #27272d;
-    --pat-cursor-row: #3a2531;
-    --pat-play: #cf4479;
-    --pat-play-ink: #fff4f8;
-    --c-num: #6e6a76;
-    --c-note: #a3b2ff;
-    --c-off: #7c7884;
-    --c-inst: #ff7fab;
-    --c-vol: #8fd46a;
-    --c-fx: #ffb547;
-    --c-param: #e2a25a;
-    --c-empty: #3c3c44;
-    --lcd-bg: #18230f;
-    --lcd-ink: #c5e08a;
-    --lcd-dim: #4d6a32;
-  }
-}
-
-:root[data-theme='dark'] {
-  color-scheme: dark;
-  --bg: #1b1b1f;
-  --surface: #25252a;
-  --surface-2: #303036;
-  --line: #3b3b43;
-  --ink: #ebe7de;
-  --ink-soft: #9e9aa5;
-  --accent: #cf4479;
-  --accent-hi: #e25a8e;
-  --accent-ink: #fff4f8;
-  --navy: #a7acff;
-  --pill: #4f4c55;
-  --pill-ink: #ebe7de;
-  --field: #1e1e22;
-  --focus: #a7acff;
-  --pat-bg: #18181b;
-  --pat-beat: #202025;
-  --pat-bar: #27272d;
-  --pat-cursor-row: #3a2531;
-  --pat-play: #cf4479;
-  --pat-play-ink: #fff4f8;
-  --c-num: #6e6a76;
-  --c-note: #a3b2ff;
-  --c-off: #7c7884;
-  --c-inst: #ff7fab;
-  --c-vol: #8fd46a;
-  --c-fx: #ffb547;
-  --c-param: #e2a25a;
-  --c-empty: #3c3c44;
-  --lcd-bg: #18230f;
-  --lcd-ink: #c5e08a;
-  --lcd-dim: #4d6a32;
-}
+@import './theme.css';
 
 * {
   box-sizing: border-box;
@@ -309,6 +197,12 @@ button {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
+}
+
+select.pill-btn {
+  appearance: none;
+  cursor: pointer;
+  text-align: center;
 }
 
 .volume {
@@ -889,6 +783,11 @@ button {
   color: var(--pill-ink);
   font-size: 12px;
   font-weight: 700;
+}
+
+a.btn {
+  display: inline-block;
+  text-decoration: none;
 }
 
 .btn.primary {

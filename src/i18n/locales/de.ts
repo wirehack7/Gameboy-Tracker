@@ -258,4 +258,18 @@ export const de: Translation = {
   'help.fx.D': 'Pattern-Break, weiter bei Zeile xx',
   'help.fx.E': 'Note nach xx Ticks abschneiden',
   'help.fx.F': 'Tempo (Ticks pro Zeile)',
+  'help.about': 'Über',
+
+  // about dialog
+  'about.version': 'Version {version}',
+  'about.text': 'Ein Tracker für den Soundchip von Game Boy (DMG) und Game Boy Color, direkt im Browser.',
+  'about.credits': 'Von {author}. Freie Software unter der MIT-Lizenz.',
+  'about.repo': 'Quellcode auf GitHub ↗',
+  'about.manual': 'Handbuch (Englisch) ↗',
+  'about.close': 'Schließen',
+  'about.score': 'PUNKTE',
+  'about.best': 'REKORD',
+  'about.jump': 'Springen',
+  'about.hint': 'A, Leertaste oder Bildschirm antippen zum Springen.',
+  'about.over': 'Game over. A drücken für einen neuen Versuch.',
 };

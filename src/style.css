@@ -1228,3 +1228,111 @@ a.btn {
   min-width: 4.5em;
   text-align: right;
 }
+
+/* About dialog with the mini game */
+.about {
+  width: min(420px, calc(100vw - 16px));
+  max-height: calc(100dvh - 16px);
+  overflow: auto;
+  padding: 14px 16px 16px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 10px 40px rgb(0 0 0 / 35%);
+}
+
+.about::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+
+.about h2 {
+  margin: 0;
+  color: var(--accent);
+  font-size: 18px;
+  letter-spacing: 0.08em;
+}
+
+.about p {
+  margin: 6px 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.about a:not(.btn) {
+  color: var(--navy);
+}
+
+.about-version {
+  font-family: var(--mono);
+  color: var(--ink-soft);
+}
+
+.about-close {
+  float: right;
+  margin: 0;
+}
+
+.about-game {
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 8px 8px 28px 8px;
+  background: var(--pill);
+}
+
+.about-score {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--pill-ink);
+  margin-bottom: 6px;
+}
+
+.about-score output {
+  font-family: inherit;
+}
+
+/* 160 x 144 scaled up in whole pixels; shrinks on short landscape phones. */
+#about-lcd {
+  display: block;
+  width: min(100%, 320px, max(160px, (100dvh - 260px) * 160 / 144));
+  aspect-ratio: 160 / 144;
+  margin: 0 auto;
+  image-rendering: pixelated;
+  touch-action: manipulation;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.about-pad {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.about-pad .hint {
+  flex: 1;
+  margin: 0;
+  color: var(--pill-ink);
+  font-size: 12px;
+}
+
+.about-a {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 800;
+  font-size: 18px;
+  touch-action: manipulation;
+}
+
+.about-a:active {
+  background: var(--accent-hi);
+}

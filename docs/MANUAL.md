@@ -29,6 +29,7 @@ sounds right in the tracker sounds the same on hardware, in the exported ROM and
 - [Exporting](#exporting)
 - [Using the music in a GBDK game](#using-the-music-in-a-gbdk-game)
 - [Tips and hardware quirks](#tips-and-hardware-quirks)
+- [About and the mini game](#about-and-the-mini-game)
 - [Not available yet](#not-available-yet)
 
 ## Quick start
@@ -693,6 +694,14 @@ format is simple enough to play from an assembly driver (for example in RGBDS) i
 - **Wave bass:** a triangle or sine wave on CH3 at 100 % gives a smooth bass; square and saw sound brighter.
 - **Stereo:** use `8xx` to place channels left or right. Original DMG units have only a mono speaker; stereo is
   heard on headphones.
+
+## About and the mini game
+
+**About** in the HELP tab opens a small window with the tracker's version, the author and links to the source
+code and this manual. It also holds a tiny Game Boy style jump'n'run: jump over the blocks for as long as you
+can, the screen gets faster over time. Press **Space**, **↑**, **X** or **Z**, tap the screen or press the red
+**A** button to jump. Your best score is kept in the browser. **Esc**, the **✕** button or a click outside the
+window closes it; while it is open, keys do not reach the tracker.
 
 ## Not available yet
 

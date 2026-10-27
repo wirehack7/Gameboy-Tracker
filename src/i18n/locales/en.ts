@@ -259,4 +259,18 @@ export const en = {
   'help.fx.D': 'Pattern break, continue at row xx',
   'help.fx.E': 'Cut note after xx ticks',
   'help.fx.F': 'Speed (ticks per row)',
+  'help.about': 'About',
+
+  // about dialog
+  'about.version': 'Version {version}',
+  'about.text': 'A tracker for the Game Boy (DMG) and Game Boy Color sound chip that runs in the browser.',
+  'about.credits': 'Made by {author}. Free software under the MIT license.',
+  'about.repo': 'Source code on GitHub ↗',
+  'about.manual': 'Manual ↗',
+  'about.close': 'Close',
+  'about.score': 'SCORE',
+  'about.best': 'BEST',
+  'about.jump': 'Jump',
+  'about.hint': 'Press A, Space or tap the screen to jump.',
+  'about.over': 'Game over. Press A to try again.',
 } as const;

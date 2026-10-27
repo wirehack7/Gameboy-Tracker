@@ -1486,7 +1486,8 @@ function renderFilePanel() {
   exportAudio('x-opus', async (opts) => {
     if (!canEncode('audio')) throw new Error(t('export.unsupportedError'));
     const { data, seconds } = await exportOpus(structuredClone(song), { loops: opts.loops ?? 1, onProgress: opts.onProgress });
-    return { name: `${fileBase()}.opus`, data, type: 'audio/ogg', seconds };
+    // Firefox renames audio/ogg downloads to .ogx, so hand the file over untyped.
+    return { name: `${fileBase()}.opus`, data, type: 'application/octet-stream', seconds };
   });
   exportAudio('x-video', async (opts) => {
     if (!canEncode('video')) throw new Error(t('export.unsupportedError'));

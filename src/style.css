@@ -434,11 +434,10 @@ select.pill-btn {
   min-height: 0;
   flex: 1;
   padding: 2px;
-  border-radius: 3px;
+  border-radius: 4px;
   background: var(--pat-bg);
-  color: var(--lcd-text);
-  box-shadow: inset 0 0 0 3px var(--bezel), inset 0 2px 4px 3px rgb(0 0 0 / 0.25);
-  border: 3px solid var(--bezel);
+  color: var(--pat-ink);
+  border: 1px solid var(--line);
   font: 18px / 1 var(--mono);
 }
 
@@ -478,11 +477,10 @@ select.pill-btn {
   white-space: nowrap;
 }
 
-/* Selected like a Game Boy menu entry: inverted pixels. */
 .order-list button[aria-current='true'],
 .inst-list button[aria-current='true'] {
-  background: var(--lcd-sel);
-  color: var(--lcd-sel-ink);
+  background: var(--accent);
+  color: var(--accent-ink);
 }
 
 .order-list button[aria-current='true'] span,
@@ -525,17 +523,18 @@ select.pill-btn {
   --pat-font: clamp(17px, 0.6vw + 10px, 24px);
 }
 
-/* The screen bezel: slate glass frame with the two stripes and the rounded bottom-right corner. */
+/* The pattern sheet: paper, not LCD, framed by the stripes and the DMG's rounded bottom-right corner. */
 .screen {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
   margin: 8px 8px 0;
-  padding: 0 12px 14px;
-  border-radius: 8px 8px 40px 8px;
-  background: var(--bezel);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), inset 0 -2px 0 var(--bezel-lo);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  --sheet-corner: 31px;
+  border-radius: 6px 6px calc(var(--sheet-corner) + 1px) 6px;
+  background: var(--pat-bg);
 }
 
 .screen-label {
@@ -543,9 +542,11 @@ select.pill-btn {
   align-items: center;
   gap: 8px;
   height: 20px;
+  padding: 0 8px;
   flex: none;
   overflow: hidden;
-  color: var(--bezel-ink);
+  background: var(--surface-2);
+  color: var(--navy);
   font: 400 10px var(--pixel);
   letter-spacing: 0.14em;
   white-space: nowrap;
@@ -563,14 +564,6 @@ select.pill-btn {
   flex: 1 0 18px;
 }
 
-.screen > .chan-head {
-  border-radius: 3px 3px 0 0;
-}
-
-.screen > .pattern {
-  border-radius: 0 0 3px 3px;
-}
-
 .chan-head,
 .prow {
   display: grid;
@@ -581,7 +574,7 @@ select.pill-btn {
 .chan-head {
   font: var(--pat-font) / 1.1 var(--mono);
   background: var(--pat-bg);
-  color: var(--lcd-text);
+  color: var(--pat-ink);
   border-bottom: 2px solid var(--pat-line);
   overflow: hidden;
   flex: none;
@@ -617,16 +610,16 @@ select.pill-btn {
 }
 
 .chan-title .kind {
-  color: var(--lcd-soft);
+  color: var(--pat-soft);
 }
 
 .chan .mute {
-  border: 1px solid var(--lcd-soft);
+  border: 1px solid var(--pat-soft);
   background: transparent;
   border-radius: 2px;
   font: 400 10px var(--pixel);
   padding: 2px 4px 1px;
-  color: var(--lcd-soft);
+  color: var(--pat-soft);
 }
 
 .chan.muted .mute {
@@ -648,7 +641,9 @@ select.pill-btn {
   height: clamp(28px, 6vh, 56px);
   display: block;
   background: var(--lcd-bg);
-  border-radius: 2px;
+  /* Each scope is a little Game Boy screen in its slate bezel. */
+  border: 3px solid var(--bezel);
+  border-radius: 4px 4px 10px 4px;
 }
 
 .pattern {
@@ -657,10 +652,15 @@ select.pill-btn {
   overflow: auto;
   background: var(--pat-bg);
   font: var(--pat-font) / 1.15 var(--mono);
-  color: var(--lcd-text);
+  color: var(--pat-ink);
   white-space: pre;
   outline: none;
   overscroll-behavior: contain;
+}
+
+/* The pattern scrolls inside the sheet, so it takes the rounded corner too: that clips its own scrollbars. */
+.screen > .pattern {
+  border-radius: 0 0 var(--sheet-corner) 5px;
 }
 
 .pattern:focus-visible {
@@ -696,7 +696,7 @@ select.pill-btn {
 }
 
 .prow.bar .num {
-  color: var(--lcd-text);
+  color: var(--pat-ink);
 }
 
 .cell {
@@ -1214,8 +1214,8 @@ a.btn {
 
   .screen {
     margin: 6px 6px 0;
-    padding: 0 6px 8px;
-    border-radius: 6px 6px 28px 6px;
+    --sheet-corner: 23px;
+    border-radius: 6px 6px 24px 6px;
   }
 
   .screen-label {
@@ -1265,8 +1265,8 @@ a.btn {
   .screen {
     grid-area: screen;
     margin: 4px;
-    padding: 4px 4px 6px;
-    border-radius: 6px 6px 20px 6px;
+    --sheet-corner: 15px;
+    border-radius: 6px 6px 16px 6px;
   }
 
   .screen-label {
@@ -1327,8 +1327,8 @@ a.btn {
 
   .screen {
     margin: 4px 4px 0;
-    padding: 4px 4px 6px;
-    border-radius: 6px 6px 20px 6px;
+    --sheet-corner: 15px;
+    border-radius: 6px 6px 16px 6px;
   }
 
   .screen-label {

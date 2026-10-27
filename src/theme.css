@@ -38,34 +38,32 @@
   --rec-ring: rgb(212 42 42 / 0.45);
   --rec-glow: rgb(212 42 42 / 0.18);
 
-  /* The screen: an unlit DMG LCD, four greens from pale to almost black. */
+  /* The pattern reads like paper; the four DMG greens are kept for the scopes and the wave editor. */
   --lcd-0: #c4cfa1;
   --lcd-1: #8bac0f;
   --lcd-2: #306230;
   --lcd-3: #0f380f;
-  --pat-bg: var(--lcd-0);
-  --pat-beat: #b8c493;
-  --pat-bar: #aab886;
-  --pat-cursor-row: #d6d5a6;
-  --pat-play: var(--lcd-2);
-  --pat-play-ink: #e0f0c0;
-  --pat-line: #a3b07c;
-  --c-num: #56663a;
-  --c-note: #1b2577;
-  --c-off: #5d6a45;
-  --c-inst: #8a1640;
-  --c-vol: #1d5420;
-  --c-fx: #8a3c00;
-  --c-param: #5c3810;
-  --c-empty: #95a274;
+  --pat-bg: #f8f6f1;
+  --pat-beat: #efebe2;
+  --pat-bar: #e5e0d4;
+  --pat-cursor-row: #f2dde5;
+  --pat-play: #a3224f;
+  --pat-play-ink: #fbf2f5;
+  --pat-line: #d6d1c6;
+  --pat-ink: #23232b;
+  --pat-soft: #6b6873;
+  --c-num: #9a958b;
+  --c-note: #23288a;
+  --c-off: #8b8790;
+  --c-inst: #a3224f;
+  --c-vol: #2d7a31;
+  --c-fx: #b25700;
+  --c-param: #7a4a12;
+  --c-empty: #c9c4b9;
 
   --lcd-bg: var(--lcd-1);
   --lcd-ink: var(--lcd-3);
   --lcd-dim: var(--lcd-2);
-  --lcd-text: var(--lcd-3);
-  --lcd-soft: #4d5e33;
-  --lcd-sel: var(--lcd-3);
-  --lcd-sel-ink: var(--lcd-0);
 
   --mono: 'VT323', ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;
   --pixel: 'Silkscreen', 'VT323', ui-monospace, monospace;
@@ -110,33 +108,31 @@
     --rec-bg: #3a1a1c;
     --rec-ring: rgb(255 77 77 / 0.45);
     --rec-glow: rgb(255 77 77 / 0.2);
-    /* A backlit screen: dark green glass, bright phosphor-green ink. */
+    /* Scopes: a backlit screen, dark green glass with bright phosphor-green ink. */
     --lcd-0: #0e1a0e;
     --lcd-1: #9bbc0f;
     --lcd-2: #306230;
     --lcd-3: #0f380f;
-    --pat-bg: var(--lcd-0);
-    --pat-beat: #132313;
-    --pat-bar: #192e19;
-    --pat-cursor-row: #2a2a1a;
-    --pat-play: var(--lcd-1);
-    --pat-play-ink: var(--lcd-3);
-    --pat-line: #1f331f;
-    --c-num: #5f7f4c;
-    --c-note: #aab8ff;
-    --c-off: #7c8c70;
-    --c-inst: #ff86b0;
-    --c-vol: #9bdc5a;
+    --pat-bg: #18181b;
+    --pat-beat: #202025;
+    --pat-bar: #27272d;
+    --pat-cursor-row: #3a2531;
+    --pat-play: #cf4479;
+    --pat-play-ink: #fff4f8;
+    --pat-line: #303038;
+    --pat-ink: #ebe7de;
+    --pat-soft: #9e9aa5;
+    --c-num: #6e6a76;
+    --c-note: #a3b2ff;
+    --c-off: #7c7884;
+    --c-inst: #ff7fab;
+    --c-vol: #8fd46a;
     --c-fx: #ffb547;
     --c-param: #e2a25a;
-    --c-empty: #2c432c;
+    --c-empty: #3c3c44;
     --lcd-bg: var(--lcd-3);
     --lcd-ink: var(--lcd-1);
     --lcd-dim: #4d6a32;
-    --lcd-text: #b5d47a;
-    --lcd-soft: #6f8f55;
-    --lcd-sel: var(--lcd-1);
-    --lcd-sel-ink: var(--lcd-3);
   }
 }
 
@@ -176,31 +172,29 @@
   --rec-bg: #3a1a1c;
   --rec-ring: rgb(255 77 77 / 0.45);
   --rec-glow: rgb(255 77 77 / 0.2);
-  /* A backlit screen: dark green glass, bright phosphor-green ink. */
+  /* Scopes: a backlit screen, dark green glass with bright phosphor-green ink. */
   --lcd-0: #0e1a0e;
   --lcd-1: #9bbc0f;
   --lcd-2: #306230;
   --lcd-3: #0f380f;
-  --pat-bg: var(--lcd-0);
-  --pat-beat: #132313;
-  --pat-bar: #192e19;
-  --pat-cursor-row: #2a2a1a;
-  --pat-play: var(--lcd-1);
-  --pat-play-ink: var(--lcd-3);
-  --pat-line: #1f331f;
-  --c-num: #5f7f4c;
-  --c-note: #aab8ff;
-  --c-off: #7c8c70;
-  --c-inst: #ff86b0;
-  --c-vol: #9bdc5a;
+  --pat-bg: #18181b;
+  --pat-beat: #202025;
+  --pat-bar: #27272d;
+  --pat-cursor-row: #3a2531;
+  --pat-play: #cf4479;
+  --pat-play-ink: #fff4f8;
+  --pat-line: #303038;
+  --pat-ink: #ebe7de;
+  --pat-soft: #9e9aa5;
+  --c-num: #6e6a76;
+  --c-note: #a3b2ff;
+  --c-off: #7c7884;
+  --c-inst: #ff7fab;
+  --c-vol: #8fd46a;
   --c-fx: #ffb547;
   --c-param: #e2a25a;
-  --c-empty: #2c432c;
+  --c-empty: #3c3c44;
   --lcd-bg: var(--lcd-3);
   --lcd-ink: var(--lcd-1);
   --lcd-dim: #4d6a32;
-  --lcd-text: #b5d47a;
-  --lcd-soft: #6f8f55;
-  --lcd-sel: var(--lcd-1);
-  --lcd-sel-ink: var(--lcd-3);
 }

@@ -213,8 +213,8 @@ button {
   padding: 12px 14px;
   border-radius: 8px;
   background: var(--pat-bg);
-  color: var(--lcd-text);
-  border: 6px solid var(--bezel);
+  color: var(--pat-ink);
+  border: 1px solid var(--line);
   border-radius: 8px 8px 24px 8px;
   line-height: 1.2;
 }

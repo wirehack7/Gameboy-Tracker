@@ -294,6 +294,19 @@ button {
   letter-spacing: 0.08em;
 }
 
+.volume {
+  font: 700 12px var(--mono);
+}
+
+.volume input {
+  width: 110px;
+  accent-color: var(--accent);
+}
+
+.volume output {
+  min-width: 3ch;
+}
+
 /* ---------------------------------------------------------------- layout */
 
 .workspace {

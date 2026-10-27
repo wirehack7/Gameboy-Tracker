@@ -11,6 +11,7 @@ import { encodeXm } from './export/xm';
 import { encodeVgm } from './export/vgm';
 import { encodeFlac } from './export/flac';
 import { RenderOptions, encodeWav, renderSong, renderStems } from './export/wav';
+import { canEncode, exportOpus, exportVideo, themeColors } from './export/video';
 import { unzip, zip } from './export/zip';
 import { MidiInput, MidiStatus, midiToNote } from './input/midi';
 import { NOTE_COUNT } from './tracker/notes';
@@ -1397,6 +1398,8 @@ function renderFilePanel() {
       <button type="button" class="btn primary" id="x-wav">${t('export.wav')}</button>
       <button type="button" class="btn" id="x-flac">${t('export.flac')}</button>
       <button type="button" class="btn" id="x-stems">${t('export.stems')}</button>
+      <button type="button" class="btn" id="x-opus">${t('export.opus')}</button>
+      <button type="button" class="btn" id="x-video">${t('export.video')}</button>
       <button type="button" class="btn" id="x-vgm">${t('export.vgm')}</button>
       <button type="button" class="btn" id="x-gbs">${t('export.gbs')}</button>
       <button type="button" class="btn" id="x-rom">${t('export.rom')}</button>
@@ -1453,6 +1456,8 @@ function renderFilePanel() {
         });
         download(name, data as BlobPart, type);
         status.textContent = t('export.audioReady', { name, seconds: num(seconds, 1) });
+      } catch (err) {
+        status.textContent = (err as Error).message;
       } finally {
         btn.disabled = false;
       }
@@ -1477,6 +1482,21 @@ function renderFilePanel() {
     );
     const { left, sampleRate } = stems[0];
     return { name: `${fileBase()}_stems.zip`, data, type: 'application/zip', seconds: left.length / sampleRate };
+  });
+  exportAudio('x-opus', async (opts) => {
+    if (!canEncode('audio')) throw new Error(t('export.unsupportedError'));
+    const { data, seconds } = await exportOpus(structuredClone(song), { loops: opts.loops ?? 1, onProgress: opts.onProgress });
+    return { name: `${fileBase()}.opus`, data, type: 'audio/ogg', seconds };
+  });
+  exportAudio('x-video', async (opts) => {
+    if (!canEncode('video')) throw new Error(t('export.unsupportedError'));
+    const colors = themeColors(getComputedStyle(document.documentElement));
+    const { data, seconds } = await exportVideo(structuredClone(song), {
+      loops: opts.loops ?? 1,
+      onProgress: opts.onProgress,
+      colors,
+    });
+    return { name: `${fileBase()}.webm`, data, type: 'video/webm', seconds };
   });
   $('x-vgm').addEventListener('click', () => {
     const vgm = encodeVgm(captureStream(structuredClone(song)), { title: song.title, author: song.author });

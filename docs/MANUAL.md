@@ -550,6 +550,8 @@ song. Tests in the repository check this sample for sample.
 | Export WAV | `.wav` | Audio: 16-bit stereo, rendered by the emulator. The **Loops** slider sets how many times the song is played (1–4). |
 | Export FLAC | `.flac` | The same audio, lossless and about half the size of the WAV. Decodes to exactly the WAV's samples. |
 | Export stems | `<name>_stems.zip` | One WAV per channel (`_ch1_pulse.wav` … `_ch4_noise.wav`), each with the other three channels muted, for mixing in a DAW. Together they add up to the full mix. |
+| Export Opus | `.opus` | Small compressed audio (Ogg Opus, 160 kbit/s) for sharing and messengers. Needs a browser with WebCodecs, see [Video and Opus](#video-and-opus). |
+| Export video | `.webm` | A video of the song with the four channel scopes and the scrolling pattern, see [Video and Opus](#video-and-opus). |
 | Export VGM | `.vgm` | Video game music players such as VGMPlay, or foobar2000 and Winamp with a VGM plugin. VGM 1.71 with the Game Boy DMG chip, loop point, and title/author tags. |
 | Export GBS | `.gbs` | Game Boy music players (GBS v1). Title and author are in the header. |
 | Game Boy ROM | `.gb` / `.gbc` | Playing on a real Game Boy (flash cart), on a Game Boy Color, or in an emulator. |
@@ -573,6 +575,20 @@ players and in many multi-format music players.
 Songs with [samples](#samples) run from the timer instead: the GBS player calls the driver 256 times a second,
 it refills wave RAM each time and plays a frame whenever 70224 clocks (one VBlank) have added up. Frames then
 start on that 256 Hz grid, up to 4 ms off the exact VBlank time; the average tempo is exact.
+
+### Video and Opus
+
+**Export video** renders a 1280×720 WebM video at 30 frames per second: title and author, the playing time and
+position, the four channel scopes and the pattern scrolling with the playing row, in the colours of the current
+theme (light or dark). The sound is Opus, the picture VP9 (or VP8 where the browser has no VP9 encoder).
+**Export Opus** makes the same sound as an `.opus` file.
+
+The song is rendered offline frame by frame, so the export is usually faster than the song itself and has no
+dropouts. The **Loops** slider applies as for WAV. The video plays in browsers, VLC and most players, and can be
+uploaded to YouTube, Mastodon and the like.
+
+Both exports use the browser's WebCodecs encoders: current Chrome, Edge and Firefox have them. Where they are
+missing (for example in some Safari versions) the status line says so; use WAV or FLAC instead.
 
 ### XM and MOD
 
@@ -711,7 +727,6 @@ These are planned and listed in the [roadmap](https://github.com/wirehack7/Gameb
 
 - XM and MOD import
 - Sample playback (drum kits, voices) on the wave channel
-- Video export with scopes and scrolling patterns, more audio formats
 - Undo/redo, block copy and paste
 - Instrument macros (per-tick tables)
 - Offline use as an installable app (PWA)

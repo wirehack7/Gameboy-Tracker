@@ -180,6 +180,9 @@ export const es: Translation = {
   'export.wav': 'Exportar WAV',
   'export.flac': 'Exportar FLAC',
   'export.stems': 'Exportar stems',
+  'export.opus': 'Exportar Opus',
+  'export.video': 'Exportar vídeo',
+  'export.unsupportedError': 'Este navegador no puede codificarlo (falta WebCodecs). Prueba un Chrome, Edge o Firefox actual.',
   'export.vgm': 'Exportar VGM',
   'export.gbs': 'Exportar GBS',
   'export.rom': 'ROM de Game Boy',
@@ -187,7 +190,7 @@ export const es: Translation = {
   'export.mod': 'Exportar MOD',
   'export.gbdk': 'Proyecto GBDK (.zip)',
   'export.hint':
-    'FLAC: sin pérdidas y aproximadamente la mitad de tamaño que WAV. Stems: un WAV por canal en un ZIP, para mezclar en otro programa. ROM: funciona en hardware y emuladores (.gb, o .gbc para canciones CGB). GBS y VGM se reproducen en reproductores de música. GBDK: array en C del flujo de registros, un pequeño driver en C y un Makefile. XM y MOD se abren en otros trackers (los instrumentos se convierten en samples). El vídeo está en la hoja de ruta.',
+    'Opus: audio comprimido y pequeño (.opus). Vídeo: WebM con los osciloscopios de los canales y el patrón en movimiento, renderizado más rápido que en tiempo real. FLAC: sin pérdidas y aproximadamente la mitad de tamaño que WAV. Stems: un WAV por canal en un ZIP, para mezclar en otro programa. ROM: funciona en hardware y emuladores (.gb, o .gbc para canciones CGB). GBS y VGM se reproducen en reproductores de música. GBDK: array en C del flujo de registros, un pequeño driver en C y un Makefile. XM y MOD se abren en otros trackers (los instrumentos se convierten en samples).',
   'export.rendering': 'Renderizando… {seconds} s',
   'export.audioReady': '{name} listo ({seconds} s).',
   'export.size': '{name}: {bytes} bytes.',

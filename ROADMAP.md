@@ -43,8 +43,8 @@ published to GitHub Pages automatically after merging. Finished items are ticked
 
 ## Phase 6 – Audio and video
 - [x] More audio formats: FLAC (lossless) and stems (one WAV per channel)
-- [ ] Compressed audio (Opus/MP3) via WebCodecs, together with the video export
-- [ ] Video export with oscilloscopes and scrolling patterns (WebM via MediaRecorder/WebCodecs)
+- [x] Compressed audio: Ogg Opus via WebCodecs
+- [x] Video export with oscilloscopes and scrolling patterns (WebM, VP9/VP8 + Opus via WebCodecs)
 
 ## Phase 7 – Comfort
 - [ ] Undo/redo, copy/paste of blocks, transpose

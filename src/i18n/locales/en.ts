@@ -199,6 +199,9 @@ export const en = {
   'export.wav': 'Export WAV',
   'export.flac': 'Export FLAC',
   'export.stems': 'Export stems',
+  'export.opus': 'Export Opus',
+  'export.video': 'Export video',
+  'export.unsupportedError': 'This browser cannot encode it (WebCodecs is missing). Try a current Chrome, Edge or Firefox.',
   'export.vgm': 'Export VGM',
   'export.gbs': 'Export GBS',
   'export.rom': 'Game Boy ROM',
@@ -206,7 +209,7 @@ export const en = {
   'export.mod': 'Export MOD',
   'export.gbdk': 'GBDK project (.zip)',
   'export.hint':
-    'FLAC: lossless and about half the size of WAV. Stems: one WAV per channel in a ZIP, for mixing elsewhere. ROM: runs on hardware and emulators (.gb, or .gbc for CGB songs). GBS and VGM play in music players. GBDK: C array of the register stream, a tiny C driver and a Makefile. XM and MOD open in other trackers (instruments become samples). Video is on the roadmap.',
+    'Opus: small compressed audio (.opus). Video: WebM with the channel scopes and the scrolling pattern, rendered faster than real time. FLAC: lossless and about half the size of WAV. Stems: one WAV per channel in a ZIP, for mixing elsewhere. ROM: runs on hardware and emulators (.gb, or .gbc for CGB songs). GBS and VGM play in music players. GBDK: C array of the register stream, a tiny C driver and a Makefile. XM and MOD open in other trackers (instruments become samples).',
   'export.rendering': 'Rendering… {seconds} s',
   'export.audioReady': '{name} ready ({seconds} s).',
   'export.size': '{name}: {bytes} bytes.',

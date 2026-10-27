@@ -17,6 +17,17 @@
   --focus: #2b2f86;
   --stripe-a: #8e2e5c;
   --stripe-b: #2e3080;
+  --deck: #d3cec3;
+  --deck-edge: #fbfaf7;
+  --deck-ink: #4a4752;
+  --deck-ink-hi: #26262e;
+  --deck-hover: rgb(255 255 255 / 0.55);
+  --deck-press: #c4beb2;
+  --rec: #d42a2a;
+  --rec-off: #9c958c;
+  --rec-bg: #fbe9e7;
+  --rec-ring: rgb(212 42 42 / 0.45);
+  --rec-glow: rgb(212 42 42 / 0.18);
 
   --pat-bg: #f8f6f1;
   --pat-beat: #efebe2;
@@ -75,6 +86,17 @@
     --lcd-bg: #18230f;
     --lcd-ink: #c5e08a;
     --lcd-dim: #4d6a32;
+    --deck: #17171a;
+    --deck-edge: #34343b;
+    --deck-ink: #b4b0bb;
+    --deck-ink-hi: #f2efe8;
+    --deck-hover: rgb(255 255 255 / 0.07);
+    --deck-press: #0f0f11;
+    --rec: #ff4d4d;
+    --rec-off: #4a4650;
+    --rec-bg: #3a1a1c;
+    --rec-ring: rgb(255 77 77 / 0.45);
+    --rec-glow: rgb(255 77 77 / 0.2);
   }
 }
 
@@ -111,4 +133,15 @@
   --lcd-bg: #18230f;
   --lcd-ink: #c5e08a;
   --lcd-dim: #4d6a32;
+  --deck: #17171a;
+  --deck-edge: #34343b;
+  --deck-ink: #b4b0bb;
+  --deck-ink-hi: #f2efe8;
+  --deck-hover: rgb(255 255 255 / 0.07);
+  --deck-press: #0f0f11;
+  --rec: #ff4d4d;
+  --rec-off: #4a4650;
+  --rec-bg: #3a1a1c;
+  --rec-ring: rgb(255 77 77 / 0.45);
+  --rec-glow: rgb(255 77 77 / 0.2);
 }

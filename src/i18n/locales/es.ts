@@ -11,6 +11,7 @@ export const es: Translation = {
   'transport.stop': 'Detener',
   'transport.rec': 'Modo grabación (Esc): activado = se introducen notas, desactivado = solo suenan',
   'transport.recLabel': 'Modo grabación',
+  'transport.group': 'Transporte',
   'field.ordTitle': 'Posición en la lista de orden',
   'field.octTitle': 'Octava',
   'field.insTitle': 'Instrumento',

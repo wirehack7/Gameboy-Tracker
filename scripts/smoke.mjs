@@ -138,6 +138,19 @@ for (const screen of screens) {
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       assert(overflow <= 1, `page scrolls sideways by ${overflow}px`);
       assert((await page.locator('#pattern .prow').count()) > 0, 'the pattern shows no rows');
+      // The transport deck sits on one row next to the logo, every key big enough to hit.
+      const deck = await page.$$eval('.transport .deck-btn', (keys) =>
+        keys.map((k) => {
+          const r = k.getBoundingClientRect();
+          return { top: Math.round(r.top), w: r.width, h: r.height };
+        }),
+      );
+      assert(deck.length === 4, `the transport has ${deck.length} keys`);
+      assert(new Set(deck.map((k) => k.top)).size === 1, 'the transport keys wrap onto several rows');
+      assert(deck.every((k) => k.w >= 30 && k.h >= 30), `transport keys too small: ${JSON.stringify(deck)}`);
+      const logo = await page.locator('.brand').boundingBox();
+      const strip = await page.locator('.transport').boundingBox();
+      assert(strip.y < logo.y + logo.height, 'the transport fell below the logo');
 
       const play = page.locator('#play-song');
       await press(page, play, touch);

@@ -58,10 +58,10 @@ to put the song into your song library, where you can keep as many songs as you 
 | Element | What it does |
 | --- | --- |
 | LED | Lights up while the song plays. |
-| ▶ | Play the song from the start of the current order position. |
-| ⟳ | Loop the current pattern, starting at the cursor row. |
-| ■ | Stop. |
-| ● | Record mode on or off (also `Esc`). When it is off, notes are only played and the pattern is not changed, see [Record mode](#record-mode). |
+| Play (triangle) | Play the song from the start of the current order position. The key turns red while the song plays. |
+| Loop (arrows) | Loop the current pattern, starting at the cursor row. |
+| Stop (square) | Stop. |
+| REC | Record mode on or off (also `Esc`). The LED glows red while it is on. When it is off, notes are only played and the pattern is not changed, see [Record mode](#record-mode). |
 | ORD | Current position in the order list (hex). The arrows step through the song. |
 | PAT | Number of the pattern at that position (hex). |
 | OCT | Octave for note entry (2–8). |
@@ -143,8 +143,9 @@ Row numbers, order positions, pattern numbers and effect parameters are hexadeci
 
 ### Record mode
 
-The red **●** button next to Stop (or `Esc`) switches record mode on and off. It is on by default, and the
-tracker remembers the setting.
+The **REC** key at the end of the transport deck (or `Esc`) switches record mode on and off. It is on by default, and the
+tracker remembers the setting. Its LED glows red while record mode is on; on small phones the key shows only
+the LED.
 
 - **On:** notes and values are entered into the pattern as described below.
 - **Off:** the tracker becomes an instrument to jam on. Notes from the computer keyboard, the on-screen piano,

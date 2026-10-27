@@ -307,6 +307,11 @@ button {
   min-width: 3ch;
 }
 
+.pill-btn[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
 /* ---------------------------------------------------------------- layout */
 
 .workspace {
@@ -639,6 +644,85 @@ button {
   background: var(--accent);
   color: var(--accent-ink) !important;
   border-radius: 2px;
+}
+
+/* ----------------------------------------------------------------- piano */
+
+.piano {
+  --whites: 15;
+  --key-white: #faf8f2;
+  --key-white-edge: #cfc9ba;
+  --key-black: #26262e;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--whites), minmax(0, 1fr));
+  height: 76px;
+  margin: 0 6px;
+  padding: 6px 0 4px;
+  border-top: 1px solid var(--line);
+  flex: none;
+  touch-action: none;
+  user-select: none;
+}
+
+.piano[hidden] {
+  display: none;
+}
+
+.pkey {
+  border: 0;
+  padding: 0;
+  font: 700 10px var(--mono);
+}
+
+.pkey.white {
+  grid-row: 1;
+  grid-column: calc(var(--i) + 1);
+  margin: 0 1px;
+  border-radius: 0 0 5px 5px;
+  background: var(--key-white);
+  box-shadow: inset 0 -3px 0 var(--key-white-edge);
+  color: #77736a;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 6px;
+}
+
+.pkey.black {
+  position: absolute;
+  top: 6px;
+  z-index: 1;
+  width: calc(100% / var(--whites) * 0.6);
+  height: 58%;
+  left: calc(100% / var(--whites) * (var(--i) + 1) - 100% / var(--whites) * 0.3);
+  border-radius: 0 0 4px 4px;
+  background: var(--key-black);
+  box-shadow: inset 0 -3px 0 rgb(0 0 0 / 0.35);
+}
+
+.pkey.down {
+  background: var(--accent) !important;
+  color: var(--accent-ink);
+  box-shadow: none;
+}
+
+@media (max-width: 759px) {
+  .piano {
+    height: 92px;
+  }
+}
+
+:root[data-theme='dark'] .piano {
+  --key-white: #dedad0;
+  --key-black: #111116;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .piano {
+    --key-white: #dedad0;
+    --key-black: #111116;
+  }
 }
 
 /* ---------------------------------------------------------------- keypad */

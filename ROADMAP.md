@@ -48,4 +48,5 @@ published to GitHub Pages automatically after merging. Finished items are ticked
 - [ ] Undo/redo, copy/paste of blocks, transpose
 - [ ] Instrument macros (per-tick tables for duty/volume/pitch)
 - [ ] PWA: works offline, installable on phones
-- [ ] MIDI input
+- [x] MIDI input
+- [x] On-screen piano (mouse and touch)

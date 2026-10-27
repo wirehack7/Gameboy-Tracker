@@ -6,6 +6,8 @@ import workletUrl from './worklet.ts?worker&url';
 export class AudioClient {
   private ctx: AudioContext | null = null;
   private node: AudioWorkletNode | null = null;
+  private gain: GainNode | null = null;
+  private volume = 1;
   private starting: Promise<void> | null = null;
   private pending: WorkletMessage[] = [];
   private song: Song | null = null;
@@ -33,13 +35,21 @@ export class AudioClient {
         if (msg.type === 'row') this.onRow?.(msg.order, msg.row);
         else if (msg.type === 'scope') this.onScope?.(msg.samples, msg.frames);
       };
-      node.connect(ctx.destination);
+      const gain = new GainNode(ctx, { gain: this.volume });
+      node.connect(gain).connect(ctx.destination);
+      this.gain = gain;
       this.node = node;
       if (this.song) node.port.postMessage({ type: 'song', song: this.song });
       for (const m of this.pending) node.port.postMessage(m);
       this.pending = [];
     });
     return this.starting;
+  }
+
+  /** Master output gain (linear). Only affects playback, never exports. */
+  setVolume(gain: number) {
+    this.volume = gain;
+    if (this.gain && this.ctx) this.gain.gain.setTargetAtTime(gain, this.ctx.currentTime, 0.02);
   }
 
   setSong(song: Song) {

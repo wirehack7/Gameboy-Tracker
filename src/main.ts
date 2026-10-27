@@ -36,6 +36,8 @@ import {
 
 const STORAGE_KEY = 'gb-tracker.song';
 const THEME_KEY = 'gb-tracker.theme';
+const VOLUME_KEY = 'gb-tracker.volume';
+const DEFAULT_VOLUME = 35;
 
 // ------------------------------------------------------------------ storage
 
@@ -122,6 +124,7 @@ app.innerHTML = `
       <span class="field"><output class="badge" id="model"></output></span>
     </div>
     <div class="spacer"></div>
+    <label class="field volume" title="Master volume (playback only, exports are unaffected)">VOL <input type="range" id="vol" min="0" max="100" step="1"><output id="vol-out"></output></label>
     <button class="pill-btn" id="theme" type="button"></button>
   </header>
   <div class="workspace">
@@ -177,6 +180,23 @@ function toast(text: string) {
   clearTimeout(toastTimer);
   toastTimer = window.setTimeout(() => el.classList.remove('show'), 2200);
 }
+
+// ------------------------------------------------------------------- volume
+
+const volumeInput = $('vol') as HTMLInputElement;
+
+function applyVolume(percent: number) {
+  const v = Math.max(0, Math.min(100, Math.round(percent)));
+  volumeInput.value = String(v);
+  $('vol-out').textContent = String(v).padStart(3, '\u2007');
+  // Squared for a roughly perceptual curve.
+  audio.setVolume((v / 100) ** 2);
+  return v;
+}
+
+const storedVolume = Number(loadStored(VOLUME_KEY) ?? NaN);
+applyVolume(Number.isFinite(storedVolume) ? storedVolume : DEFAULT_VOLUME);
+volumeInput.addEventListener('input', () => store(VOLUME_KEY, String(applyVolume(Number(volumeInput.value)))));
 
 // -------------------------------------------------------------------- theme
 

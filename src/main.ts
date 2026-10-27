@@ -10,7 +10,8 @@ import { encodeVgm } from './export/vgm';
 import { encodeWav, renderSong } from './export/wav';
 import { MidiInput, MidiStatus, midiToNote } from './input/midi';
 import { NOTE_COUNT } from './tracker/notes';
-import { pianoKeys, pianoOctaves } from './ui/piano';
+import { pianoKeys, pianoOctaves, pianoWhites } from './ui/piano';
+import { scopeTrace } from './ui/scope';
 import {
   CHANNEL_KINDS,
   CHANNEL_COUNT,
@@ -692,8 +693,8 @@ function renderPiano() {
   if (state === pianoState) return;
   pianoState = state;
   const keys = pianoKeys(Math.min(octave, 8), octaves);
-  const whites = keys.filter((k) => !k.black).length;
-  pianoEl.style.setProperty('--whites', String(whites));
+  // A fixed slot count keeps the key size when the top octave has no closing C.
+  pianoEl.style.setProperty('--whites', String(pianoWhites(octaves)));
   pianoEl.innerHTML = keys
     .map(
       (k) =>
@@ -926,10 +927,10 @@ function drawScopes() {
       g.moveTo(0, h / 2);
       g.lineTo(w, h / 2);
     } else {
-      const n = Math.min(scopeFrames, 512);
-      const start = scopeFrames - n;
+      const trace = scopeTrace(scopeData, scopeFrames, ch);
+      const n = trace.length;
       for (let i = 0; i < n; i++) {
-        const v = scopeData[(start + i) * 4 + ch];
+        const v = trace[i];
         const x = (i / (n - 1)) * w;
         const y = h / 2 - v * (h / 2 - 3);
         if (i === 0) g.moveTo(x, y);

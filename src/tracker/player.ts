@@ -1,0 +1,468 @@
+import { NR10, NR30, NR50, NR51, NR52, WAVE_RAM } from '../apu/apu';
+import { NOISE_NR43, NOTE_COUNT, PULSE_PERIODS, WAVE_PERIODS } from './notes';
+import { CHANNEL_KINDS, CHANNEL_COUNT, Cell, EMPTY, NOTE_OFF, Song, packWave } from './song';
+
+/** Anything that accepts APU register writes (the emulator, a logger, ...). */
+export interface RegisterWriter {
+  write(addr: number, value: number): void;
+}
+
+/** Effect numbers (first hex digit of the effect column). */
+export const FX = {
+  ARPEGGIO: 0x0,
+  SLIDE_UP: 0x1,
+  SLIDE_DOWN: 0x2,
+  PORTAMENTO: 0x3,
+  VIBRATO: 0x4,
+  MASTER_VOLUME: 0x5,
+  NOTE_DELAY: 0x7,
+  PANNING: 0x8,
+  DUTY_WAVE: 0x9,
+  VOLUME_SLIDE: 0xa,
+  POSITION_JUMP: 0xb,
+  SET_VOLUME: 0xc,
+  PATTERN_BREAK: 0xd,
+  NOTE_CUT: 0xe,
+  SET_SPEED: 0xf,
+} as const;
+
+const NRX1 = [0x11, 0x16, 0x1b, 0x20];
+
+interface ChannelState {
+  note: number;
+  /** Current period register value (NR43 value for noise). */
+  period: number;
+  instrument: number;
+  volume: number;
+  envUp: boolean;
+  envPeriod: number;
+  duty: number;
+  wave: number;
+  active: boolean;
+  trigger: boolean;
+  lastPeriod: number;
+  effect: number;
+  param: number;
+  arpeggio: number;
+  portaTarget: number;
+  portaSpeed: number;
+  vibSpeed: number;
+  vibDepth: number;
+  vibPhase: number;
+  cutTick: number;
+  delayed: Cell | null;
+  delayTick: number;
+}
+
+function initialChannel(): ChannelState {
+  return {
+    note: EMPTY,
+    period: 0,
+    instrument: 0,
+    volume: 15,
+    envUp: false,
+    envPeriod: 0,
+    duty: 2,
+    wave: 0,
+    active: false,
+    trigger: false,
+    lastPeriod: -1,
+    effect: EMPTY,
+    param: 0,
+    arpeggio: 0,
+    portaTarget: -1,
+    portaSpeed: 0,
+    vibSpeed: 0,
+    vibDepth: 0,
+    vibPhase: 0,
+    cutTick: -1,
+    delayed: null,
+    delayTick: -1,
+  };
+}
+
+/** Wave channel volume (0..15) to NR32 volume code. */
+export function waveVolumeCode(volume: number): number {
+  if (volume <= 0) return 0;
+  if (volume <= 3) return 3;
+  if (volume <= 7) return 2;
+  return 1;
+}
+
+const WAVE_CODE_VOLUME = [0, 15, 7, 3];
+
+export function periodForNote(channel: number, note: number): number {
+  const n = Math.max(0, Math.min(NOTE_COUNT - 1, note));
+  const kind = CHANNEL_KINDS[channel];
+  return kind === 'pulse' ? PULSE_PERIODS[n] : kind === 'wave' ? WAVE_PERIODS[n] : NOISE_NR43[n];
+}
+
+/**
+ * Tick based song player. Every call to `tick()` corresponds to one VBlank
+ * and produces the register writes a Game Boy sound driver would make.
+ */
+export class Player {
+  order = 0;
+  row = 0;
+  tickInRow = 0;
+  speed: number;
+  playing = false;
+  /** How often the song has looped (a row was reached a second time). */
+  loops = 0;
+  onRow?: (order: number, row: number) => void;
+
+  private channels: ChannelState[] = [];
+  private loadedWave = -1;
+  private visited = new Set<number>();
+  private jumpOrder = -1;
+  private breakRow = -1;
+  /** Rows of a single pattern to loop (pattern play mode). */
+  loopPattern = false;
+
+  constructor(public song: Song) {
+    this.speed = song.speed;
+    this.reset();
+  }
+
+  private reset() {
+    this.channels = Array.from({ length: CHANNEL_COUNT }, initialChannel);
+    this.loadedWave = -1;
+    this.visited.clear();
+    this.loops = 0;
+    this.jumpOrder = -1;
+    this.breakRow = -1;
+    this.speed = this.song.speed;
+  }
+
+  /** Power up the APU with sane mixer defaults. */
+  static init(out: RegisterWriter) {
+    out.write(NR52, 0x80);
+    out.write(NR50, 0x77);
+    out.write(NR51, 0xff);
+  }
+
+  start(out: RegisterWriter, order = 0, row = 0) {
+    this.reset();
+    this.order = Math.max(0, Math.min(this.song.order.length - 1, order));
+    this.row = row;
+    this.tickInRow = 0;
+    this.playing = true;
+    Player.init(out);
+  }
+
+  stop(out: RegisterWriter) {
+    this.playing = false;
+    for (let ch = 0; ch < CHANNEL_COUNT; ch++) this.silence(out, ch);
+  }
+
+  get pattern() {
+    return this.song.patterns[this.song.order[this.order]] ?? this.song.patterns[0];
+  }
+
+  tick(out: RegisterWriter) {
+    if (!this.playing) {
+      // Keep previewed notes' per-tick effects (e.g. note cut) alive.
+      for (let ch = 0; ch < CHANNEL_COUNT; ch++) this.update(out, ch, 1);
+      return;
+    }
+    if (this.tickInRow === 0) this.startRow(out);
+    for (let ch = 0; ch < CHANNEL_COUNT; ch++) {
+      const st = this.channels[ch];
+      if (st.delayed && this.tickInRow === st.delayTick) {
+        this.applyCell(out, ch, st.delayed);
+        st.delayed = null;
+      }
+      this.update(out, ch, this.tickInRow);
+    }
+    if (++this.tickInRow >= this.speed) {
+      this.tickInRow = 0;
+      this.advance();
+    }
+  }
+
+  private startRow(out: RegisterWriter) {
+    const key = (this.order << 8) | this.row;
+    if (this.visited.has(key)) {
+      this.loops++;
+      this.visited.clear();
+    }
+    this.visited.add(key);
+    this.onRow?.(this.order, this.row);
+    const cells = this.pattern.rows[this.row];
+    for (let ch = 0; ch < CHANNEL_COUNT; ch++) {
+      const cell = cells[ch];
+      const st = this.channels[ch];
+      st.delayed = null;
+      if (cell.effect === FX.NOTE_DELAY && cell.param > 0) {
+        st.delayed = cell;
+        st.delayTick = cell.param;
+        continue;
+      }
+      this.applyCell(out, ch, cell);
+    }
+  }
+
+  private advance() {
+    const rows = this.pattern.rows.length;
+    if (this.jumpOrder >= 0 || this.breakRow >= 0) {
+      if (!this.loopPattern) {
+        this.order = this.jumpOrder >= 0 ? this.jumpOrder : this.order + 1;
+        if (this.order >= this.song.order.length) this.order = 0;
+      }
+      this.row = Math.max(0, this.breakRow);
+      if (this.row >= this.pattern.rows.length) this.row = 0;
+      this.jumpOrder = this.breakRow = -1;
+      return;
+    }
+    if (++this.row >= rows) {
+      this.row = 0;
+      if (!this.loopPattern && ++this.order >= this.song.order.length) this.order = 0;
+    }
+  }
+
+  /** Apply a row's cell to a channel (note, instrument, volume, effect). */
+  private applyCell(out: RegisterWriter, ch: number, cell: Cell) {
+    const st = this.channels[ch];
+    const kind = CHANNEL_KINDS[ch];
+    st.effect = cell.effect;
+    st.param = cell.param;
+    st.cutTick = -1;
+
+    if (cell.instrument !== EMPTY) this.loadInstrument(ch, cell.instrument);
+
+    if (cell.note === NOTE_OFF) {
+      this.silence(out, ch);
+    } else if (cell.note !== EMPTY) {
+      const period = periodForNote(ch, cell.note);
+      if (cell.effect === FX.PORTAMENTO && st.active && kind !== 'noise') {
+        st.portaTarget = period;
+      } else {
+        if (cell.instrument === EMPTY) this.loadInstrument(ch, st.instrument);
+        st.note = cell.note;
+        st.period = period;
+        st.trigger = true;
+        st.vibPhase = 0;
+        st.portaTarget = -1;
+      }
+    }
+
+    if (cell.volume !== EMPTY) {
+      st.volume = cell.volume;
+      if (cell.note === EMPTY && st.active) st.trigger = true;
+    }
+
+    const p = cell.param;
+    switch (cell.effect) {
+      case FX.ARPEGGIO:
+        st.arpeggio = p;
+        break;
+      case FX.PORTAMENTO:
+        if (p) st.portaSpeed = p;
+        break;
+      case FX.VIBRATO:
+        if (p >> 4) st.vibSpeed = p >> 4;
+        if (p & 15) st.vibDepth = p & 15;
+        break;
+      case FX.MASTER_VOLUME:
+        out.write(NR50, p);
+        break;
+      case FX.PANNING:
+        out.write(NR51, p);
+        break;
+      case FX.DUTY_WAVE:
+        if (kind === 'pulse') {
+          st.duty = p & 3;
+          if (st.active) out.write(NRX1[ch], (st.duty << 6) | this.lengthBits(ch));
+        } else if (kind === 'wave') {
+          st.wave = p & 15;
+          if (st.active) st.trigger = true;
+        }
+        break;
+      case FX.POSITION_JUMP:
+        if (this.playing) this.jumpOrder = p;
+        break;
+      case FX.SET_VOLUME:
+        st.volume = p >> 4;
+        st.envUp = (p & 8) !== 0;
+        st.envPeriod = p & 7;
+        if (st.active || st.trigger) st.trigger = true;
+        break;
+      case FX.PATTERN_BREAK:
+        if (this.playing) this.breakRow = p;
+        break;
+      case FX.NOTE_CUT:
+        st.cutTick = p;
+        break;
+      case FX.SET_SPEED:
+        if (p > 0) this.speed = p;
+        break;
+    }
+    if (cell.effect !== FX.ARPEGGIO) st.arpeggio = 0;
+  }
+
+  private loadInstrument(ch: number, index: number) {
+    const st = this.channels[ch];
+    st.instrument = index;
+    const kind = CHANNEL_KINDS[ch];
+    if (kind === 'pulse') {
+      const ins = this.song.pulseInstruments[index];
+      st.volume = ins.volume;
+      st.envUp = ins.envUp;
+      st.envPeriod = ins.envPeriod;
+      st.duty = ins.duty;
+    } else if (kind === 'wave') {
+      const ins = this.song.waveInstruments[index];
+      st.volume = WAVE_CODE_VOLUME[ins.volume & 3];
+      st.wave = ins.wave;
+    } else {
+      const ins = this.song.noiseInstruments[index];
+      st.volume = ins.volume;
+      st.envUp = ins.envUp;
+      st.envPeriod = ins.envPeriod;
+    }
+  }
+
+  private instrumentLength(ch: number): number {
+    const st = this.channels[ch];
+    const kind = CHANNEL_KINDS[ch];
+    if (kind === 'pulse') return this.song.pulseInstruments[st.instrument].length;
+    if (kind === 'wave') return this.song.waveInstruments[st.instrument].length;
+    return this.song.noiseInstruments[st.instrument].length;
+  }
+
+  private lengthBits(ch: number): number {
+    const len = this.instrumentLength(ch);
+    return len ? (ch === 2 ? 256 : 64) - len : 0;
+  }
+
+  private silence(out: RegisterWriter, ch: number) {
+    const st = this.channels[ch];
+    if (ch === 2) out.write(NR30, 0);
+    else out.write(NRX1[ch] + 1, 0); // NRx2 = 0 turns the DAC off
+    st.active = false;
+    st.trigger = false;
+    st.note = EMPTY;
+    st.lastPeriod = -1;
+  }
+
+  /** Per-tick processing: effects, then register writes. */
+  private update(out: RegisterWriter, ch: number, tick: number) {
+    const st = this.channels[ch];
+    const kind = CHANNEL_KINDS[ch];
+
+    if (st.cutTick >= 0 && tick === st.cutTick) {
+      this.silence(out, ch);
+      st.cutTick = -1;
+      return;
+    }
+    if (!st.active && !st.trigger) return;
+
+    const max = kind === 'noise' ? 0xff : 2047;
+    if (tick > 0 && kind !== 'noise') {
+      if (st.effect === FX.SLIDE_UP) st.period = Math.min(max, st.period + st.param);
+      else if (st.effect === FX.SLIDE_DOWN) st.period = Math.max(0, st.period - st.param);
+      else if (st.effect === FX.PORTAMENTO && st.portaTarget >= 0) {
+        const d = st.portaTarget - st.period;
+        st.period += Math.sign(d) * Math.min(Math.abs(d), st.portaSpeed);
+        if (st.period === st.portaTarget) st.portaTarget = -1;
+      }
+    }
+    if (tick > 0 && st.effect === FX.VOLUME_SLIDE && st.active) {
+      const v = Math.max(0, Math.min(15, st.volume + (st.param >> 4) - (st.param & 15)));
+      if (v !== st.volume) {
+        st.volume = v;
+        st.trigger = true;
+      }
+    }
+
+    let period = st.period;
+    if (st.arpeggio && st.note >= 0) {
+      const offset = [0, st.arpeggio >> 4, st.arpeggio & 15][tick % 3];
+      if (offset) period = periodForNote(ch, st.note + offset);
+    }
+    if (st.effect === FX.VIBRATO && st.vibDepth && kind !== 'noise') {
+      if (tick > 0) st.vibPhase = (st.vibPhase + st.vibSpeed) & 63;
+      period += Math.round(Math.sin((st.vibPhase / 64) * Math.PI * 2) * st.vibDepth);
+      period = Math.max(0, Math.min(max, period));
+    }
+
+    if (st.trigger) {
+      this.triggerChannel(out, ch, period);
+      st.trigger = false;
+      st.active = true;
+    } else if (period !== st.lastPeriod) {
+      this.writePeriod(out, ch, period, false);
+    }
+  }
+
+  private writePeriod(out: RegisterWriter, ch: number, period: number, trigger: boolean) {
+    const st = this.channels[ch];
+    st.lastPeriod = period;
+    const lenEnable = this.instrumentLength(ch) ? 0x40 : 0;
+    const t = trigger ? 0x80 : 0;
+    if (ch === 3) {
+      const narrow = this.song.noiseInstruments[st.instrument].narrow ? 0x08 : 0;
+      out.write(0x22, (period & 0xf7) | narrow);
+      if (trigger) out.write(0x23, t | lenEnable);
+      return;
+    }
+    const base = NRX1[ch];
+    out.write(base + 2, period & 0xff);
+    out.write(base + 3, t | lenEnable | ((period >> 8) & 7));
+  }
+
+  private triggerChannel(out: RegisterWriter, ch: number, period: number) {
+    const st = this.channels[ch];
+    const kind = CHANNEL_KINDS[ch];
+    if (kind === 'wave') {
+      // Turning the DAC off first disables the channel, so loading wave RAM
+      // and retriggering never hit the DMG wave RAM corruption bug.
+      out.write(NR30, 0);
+      if (this.loadedWave !== st.wave) {
+        const bytes = packWave(this.song.waves[st.wave]);
+        bytes.forEach((b, i) => out.write(WAVE_RAM + i, b));
+        this.loadedWave = st.wave;
+      }
+      out.write(NR30, 0x80);
+      out.write(0x1b, this.lengthBits(ch));
+      out.write(0x1c, waveVolumeCode(st.volume) << 5);
+    } else {
+      if (ch === 0) {
+        const ins = this.song.pulseInstruments[st.instrument];
+        out.write(NR10, (ins.sweepPeriod << 4) | (ins.sweepNegate ? 8 : 0) | ins.sweepShift);
+      }
+      const duty = kind === 'pulse' ? st.duty << 6 : 0;
+      out.write(NRX1[ch], duty | this.lengthBits(ch));
+      out.write(NRX1[ch] + 1, (st.volume << 4) | (st.envUp ? 8 : 0) | st.envPeriod);
+    }
+    this.writePeriod(out, ch, period, true);
+  }
+
+  /** Play a single note immediately (note entry / jamming). */
+  preview(out: RegisterWriter, ch: number, note: number, instrument: number) {
+    const st = this.channels[ch];
+    if (!this.playing) {
+      st.effect = EMPTY;
+      st.arpeggio = 0;
+      st.cutTick = -1;
+    }
+    this.loadInstrument(ch, instrument);
+    st.note = note;
+    st.period = periodForNote(ch, note);
+    this.triggerChannel(out, ch, st.period);
+    st.active = true;
+  }
+
+  /** Stop a previewed note. */
+  release(out: RegisterWriter, ch: number) {
+    this.silence(out, ch);
+  }
+
+  /** The song was edited: keep the position but drop cached state. */
+  setSong(song: Song) {
+    this.song = song;
+    this.loadedWave = -1;
+    if (this.order >= song.order.length) this.order = 0;
+    if (this.row >= this.pattern.rows.length) this.row = 0;
+  }
+}

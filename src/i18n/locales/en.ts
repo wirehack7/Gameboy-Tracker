@@ -12,6 +12,7 @@ export const en = {
   'transport.stop': 'Stop',
   'transport.rec': 'Record mode (Esc): on = notes are entered, off = only played',
   'transport.recLabel': 'Record mode',
+  'transport.group': 'Transport',
   'field.ord': 'ORD',
   'field.ordTitle': 'Order position',
   'field.pat': 'PAT',

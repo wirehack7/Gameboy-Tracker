@@ -198,16 +198,26 @@ const app = document.getElementById('app')!;
 app.dataset.view = 'pattern';
 setLocale(loadStored(LANG_KEY) ?? matchLocale(navigator.languages ?? [navigator.language]));
 document.documentElement.lang = getLocale();
+// Transport icons: inline SVG so they render the same on every platform (Unicode glyphs did not).
+const svg = (body: string) =>
+  `<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">${body}</svg>`;
+const ICON = {
+  play: svg('<path d="M4.5 2.8v10.4a.8.8 0 0 0 1.2.7l8.2-5.2a.8.8 0 0 0 0-1.4L5.7 2.1a.8.8 0 0 0-1.2.7z" fill="currentColor"/>'),
+  loop: svg(
+    '<path d="M3 7.2V6a2.5 2.5 0 0 1 2.5-2.5H12M13 8.8V10a2.5 2.5 0 0 1-2.5 2.5H4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M10.5 1.2 13 3.5l-2.5 2.3M5.5 10.2 3 12.5l2.5 2.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  ),
+  stop: svg('<rect x="3.5" y="3.5" width="9" height="9" rx="1.5" fill="currentColor"/>'),
+};
 const stepper = (id: string, label: MessageKey, title: MessageKey) =>
   `<span class="field" data-i18n-title="${title}"><span data-i18n="${label}"></span> <span class="stepper"><button type="button" id="${id}-down" data-step-name="${title}" data-step-dir="down">‹</button><output id="${id}"></output><button type="button" id="${id}-up" data-step-name="${title}" data-step-dir="up">›</button></span></span>`;
 app.innerHTML = `
   <header class="toolbar">
     <div class="brand"><span class="led" id="play-led" data-i18n-title="app.playing"></span><h1>GB TRACKER<span>DMG · CGB</span></h1></div>
-    <div class="transport">
-      <button type="button" class="round-btn" id="play-song" data-i18n-title="transport.playSong" data-i18n-aria-label="transport.playSongLabel">▶</button>
-      <button type="button" class="round-btn" id="play-pattern" data-i18n-title="transport.loopPattern" data-i18n-aria-label="transport.loopPatternLabel">⟳</button>
-      <button type="button" class="round-btn dark" id="stop" data-i18n-title="transport.stop" data-i18n-aria-label="transport.stop">■</button>
-      <button type="button" class="round-btn rec" id="rec" data-i18n-title="transport.rec" data-i18n-aria-label="transport.recLabel">●</button>
+    <div class="transport" role="group" data-i18n-aria-label="transport.group">
+      <button type="button" class="deck-btn play" id="play-song" data-i18n-title="transport.playSong" data-i18n-aria-label="transport.playSongLabel">${ICON.play}</button>
+      <button type="button" class="deck-btn" id="play-pattern" data-i18n-title="transport.loopPattern" data-i18n-aria-label="transport.loopPatternLabel">${ICON.loop}</button>
+      <button type="button" class="deck-btn" id="stop" data-i18n-title="transport.stop" data-i18n-aria-label="transport.stop">${ICON.stop}</button>
+      <button type="button" class="deck-btn rec" id="rec" data-i18n-title="transport.rec" data-i18n-aria-label="transport.recLabel"><span class="rec-led" aria-hidden="true"></span><span class="rec-text" aria-hidden="true">REC</span></button>
     </div>
     <div class="fields">
       ${stepper('ord', 'field.ord', 'field.ordTitle')}

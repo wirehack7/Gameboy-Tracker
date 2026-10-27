@@ -11,6 +11,7 @@ export const de: Translation = {
   'transport.stop': 'Stopp',
   'transport.rec': 'Aufnahmemodus (Esc): an = Noten werden eingetragen, aus = nur gespielt',
   'transport.recLabel': 'Aufnahmemodus',
+  'transport.group': 'Wiedergabe',
   'field.ord': 'ORD',
   'field.ordTitle': 'Position in der Order-Liste',
   'field.pat': 'PAT',

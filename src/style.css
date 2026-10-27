@@ -94,51 +94,127 @@ button {
   box-shadow: 0 0 6px #ff3b3b;
 }
 
+/* Transport deck: one recessed console strip with flat keys, like the Start/Select well of the DMG. */
 .transport {
   display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 11px;
+  background: var(--deck);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.22), 0 1px 0 var(--deck-edge);
+}
+
+.deck-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   gap: 6px;
-}
-
-.round-btn {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
+  min-width: 40px;
+  height: 30px;
+  padding: 0 10px;
   border: 0;
-  background: radial-gradient(circle at 35% 30%, var(--accent-hi), var(--accent) 65%);
-  color: var(--accent-ink);
-  font-size: 13px;
-  box-shadow: 0 2px 0 rgb(0 0 0 / 0.25);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--deck-ink);
   touch-action: manipulation;
+  transition: background-color 0.12s, color 0.12s, box-shadow 0.12s;
 }
 
-.round-btn.dark {
-  background: var(--pill);
-  color: var(--pill-ink);
+.deck-btn svg {
+  display: block;
+  width: 15px;
+  height: 15px;
 }
 
-.round-btn.rec {
-  background: var(--pill);
-  color: var(--pill-ink);
-  font-size: 15px;
+@media (hover: hover) {
+  .deck-btn:hover {
+    background: var(--deck-hover);
+    color: var(--deck-ink-hi);
+  }
 }
 
-.round-btn.rec[aria-pressed='true'] {
-  background: radial-gradient(circle at 35% 30%, #ff6b6b, #d61f1f 65%);
-  color: #fff;
-  box-shadow: 0 0 8px rgb(214 31 31 / 0.6);
+.deck-btn:active {
+  background: var(--deck-press);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.3);
+}
+
+.deck-btn[aria-pressed='true'],
+.deck-btn[aria-pressed='true']:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: 0 1px 0 rgb(0 0 0 / 0.25), inset 0 1px 0 rgb(255 255 255 / 0.18);
+}
+
+.deck-btn.rec {
+  font: 800 11px var(--mono);
+  letter-spacing: 0.14em;
+}
+
+/* Divider between the play keys and the record arm. */
+.deck-btn.rec {
+  position: relative;
+  margin-left: 7px;
+}
+
+.deck-btn.rec::before {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: 50%;
+  width: 1px;
+  height: 18px;
+  margin-top: -9px;
+  background: var(--deck-edge);
+}
+
+.rec-text {
+  margin-right: -0.14em;
+}
+
+/* Bigger touch targets; on phones the deck fills the rest of the logo row. */
+@media (pointer: coarse) {
+  .deck-btn {
+    height: 36px;
+  }
+}
+
+@media (max-width: 759px) {
+  .transport {
+    flex: 1;
+    max-width: 320px;
+  }
+
+  .deck-btn {
+    flex: 1;
+  }
+}
+
+.rec-led {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--rec-off);
+  box-shadow: inset 0 1px 1px rgb(0 0 0 / 0.35);
+  transition: background-color 0.12s, box-shadow 0.12s;
+}
+
+.deck-btn.rec[aria-pressed='true'],
+.deck-btn.rec[aria-pressed='true']:hover {
+  background: var(--rec-bg);
+  color: var(--rec);
+  box-shadow: inset 0 0 0 1px var(--rec-ring);
+}
+
+.deck-btn.rec[aria-pressed='true'] .rec-led {
+  background: var(--rec);
+  box-shadow: 0 0 0 2px var(--rec-glow), 0 0 8px var(--rec);
 }
 
 #app[data-rec='off'] .cell .cursor {
   background: var(--pill);
   color: var(--pill-ink) !important;
-}
-
-.round-btn[aria-pressed='true'] {
-  box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--accent);
-}
-
-.round-btn:active {
-  transform: translateY(1px);
 }
 
 .fields {
@@ -1096,9 +1172,19 @@ a.btn {
     font-size: 15px;
   }
 
-  .round-btn {
-    width: 30px;
-    height: 30px;
+  .transport {
+    flex: none;
+  }
+
+  .deck-btn {
+    flex: none;
+    min-width: 36px;
+    padding: 0 8px;
+  }
+
+  /* The LED alone says it; the label would push the deck onto its own row. */
+  .rec-text {
+    display: none;
   }
 
   .piano {

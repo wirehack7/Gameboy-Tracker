@@ -11,6 +11,7 @@ export const fr: Translation = {
   'transport.stop': 'Arrêt',
   'transport.rec': 'Mode enregistrement (Échap) : activé = les notes sont saisies, désactivé = seulement jouées',
   'transport.recLabel': 'Mode enregistrement',
+  'transport.group': 'Transport',
   'field.ordTitle': 'Position dans la liste d’ordre',
   'field.octTitle': 'Octave',
   'field.insTitle': 'Instrument',

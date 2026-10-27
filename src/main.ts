@@ -1,5 +1,6 @@
 import './style.css';
 import { AudioClient } from './audio/client';
+import { toMono, waveFromAudio } from './audio/import';
 import { demoSong } from './tracker/demo';
 import { gbdkProject } from './export/gbdk';
 import { captureStream } from './export/stream';
@@ -1089,6 +1090,9 @@ function renderWavePanel() {
     <h2>${t('wave.heading', { n: waveIndex.toString(16).toUpperCase() })}</h2>
     <canvas class="wave-canvas" id="wave-canvas" width="320" height="160" aria-label="${t('wave.draw')}"></canvas>
     <div class="btn-row">${presets.map((p) => `<button type="button" class="btn" data-preset="${p}">${t(`wave.preset.${p}` as MessageKey)}</button>`).join('')}</div>
+    <div class="btn-row"><button type="button" class="btn" id="w-import">${t('wave.import')}</button></div>
+    <input type="file" id="w-file" accept="audio/*,.wav" class="visually-hidden">
+    <p class="hint">${t('wave.importHint')}</p>
     <h2>${t('wave.hex')}</h2>
     <div class="form"><label for="w-hex">${t('wave.data')}</label><input type="text" id="w-hex" spellcheck="false" maxlength="32"></div>
     <p class="hint">${t('wave.hint')}</p>`;
@@ -1147,6 +1151,30 @@ function renderWavePanel() {
       changed();
     }),
   );
+  const fileInput = $<HTMLInputElement>('w-file');
+  $('w-import').addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', async () => {
+    const file = fileInput.files?.[0];
+    fileInput.value = '';
+    if (!file) return;
+    try {
+      const { channels, rate } = await decodeAudioFile(file);
+      waveFromAudio(toMono(channels), rate).forEach((v, i) => (wave[i] = v));
+      draw();
+      changed();
+      toast(t('wave.imported', { name: file.name }));
+    } catch (err) {
+      toast(t('wave.importError', { error: (err as Error).message }));
+    }
+  });
+}
+
+/** Decode any audio file the browser understands to PCM. */
+async function decodeAudioFile(file: File): Promise<{ channels: Float32Array[]; rate: number }> {
+  const ctx = new OfflineAudioContext(1, 1, 44100);
+  const buffer = await ctx.decodeAudioData(await file.arrayBuffer());
+  const channels = Array.from({ length: buffer.numberOfChannels }, (_, i) => buffer.getChannelData(i));
+  return { channels, rate: buffer.sampleRate };
 }
 
 function renderSongPanel() {

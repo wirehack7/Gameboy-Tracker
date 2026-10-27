@@ -342,6 +342,15 @@ The **WAVE** tab edits the 16 waveforms (0–F) for the wave channel. A waveform
 - **Presets:** triangle, saw, square, sine, pulse25 replace the current wave.
 - **HEX:** the wave as 32 hex digits, one per sample. Edit them and press Enter to apply; useful to copy waves
   between songs or from other Game Boy tools.
+- **Import audio…:** makes the waveform from an audio file (WAV, or anything else your browser can play, such as
+  MP3, OGG or FLAC). Stereo files are mixed to mono, the level is normalised to use all 16 steps.
+  - Short files of up to 2048 samples are treated as one single-cycle waveform (the format of waveform libraries
+    such as AKWF) and squeezed into 32 samples as a whole.
+  - Longer recordings, such as a sustained synth or organ note, are searched for their pitch: one period is cut
+    out of the loudest part of the file, starting at a rising zero crossing. Recordings without a clear pitch
+    (noise, drums) are rejected.
+
+  The result is an ordinary waveform: it can be played at any pitch and edited further.
 
 A changed waveform is used from the next note on. To load a new wave the tracker briefly switches the wave
 channel's DAC off, as hardware drivers do; this avoids the DMG wave RAM corruption bug.
@@ -576,6 +585,7 @@ format is simple enough to play from an assembly driver (for example in RGBDS) i
 These are planned and listed in the [roadmap](https://github.com/wirehack7/Gameboy-Tracker/blob/main/ROADMAP.md):
 
 - XM and MOD export and import
+- Sample playback (drum kits, voices) on the wave channel
 - Video export with scopes and scrolling patterns, more audio formats
 - Undo/redo, block copy and paste
 - Instrument macros (per-tick tables)

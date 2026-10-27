@@ -3,6 +3,7 @@
  * Each used instrument becomes an XM instrument with one looped sample and a
  * volume envelope for the hardware envelope and length counter.
  */
+import { hasMacros } from '../tracker/macro';
 import { noteFrequency } from '../tracker/notes';
 import { SAMPLE_RATE } from '../tracker/sample';
 import { Song } from '../tracker/song';
@@ -142,6 +143,7 @@ export function encodeXm(song: Song): { data: Uint8Array; warnings: string[] } {
     const ins =
       ref.kind === 'pulse' ? song.pulseInstruments[ref.index] : ref.kind === 'wave' ? song.waveInstruments[ref.index] : song.noiseInstruments[ref.index];
     if (ref.kind === 'pulse' && song.pulseInstruments[ref.index].sweepPeriod) warn.add('pitch sweeps');
+    if (hasMacros(ins.macros)) warn.add('instrument macros');
     const hex = instrumentSample(song, ref);
     const sample = hex !== null ? sampleData(hex) : instrumentWaveform(song, ref, 1);
     const env = volumeEnvelope(song, ref);

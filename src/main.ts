@@ -22,8 +22,10 @@ import { pianoKeys, pianoOctaves, pianoWhites } from './ui/piano';
 import { scopeTrace } from './ui/scope';
 import { Block, clearBlock, contains, copyBlock, normalize, pasteBlock, transposeBlock } from './tracker/block';
 import { History } from './tracker/history';
+import { MACRO_KINDS, Macro, MacroKind, formatMacro, macroRange, parseMacro } from './tracker/macro';
 import {
   CHANNEL_KINDS,
+  ChannelKind,
   CHANNEL_COUNT,
   INSTRUMENT_COUNT,
   NOTE_OFF,
@@ -1184,6 +1186,52 @@ function bindCheck(id: string, apply: (v: boolean) => void) {
   });
 }
 
+function macroLabel(kind: MacroKind, channel: ChannelKind) {
+  if (kind !== 'duty') return t(`inst.macro.${kind}`);
+  return t(channel === 'pulse' ? 'inst.macro.duty' : channel === 'wave' ? 'inst.macro.wave' : 'inst.macro.noise');
+}
+
+/** Bar graph of a macro: one bar per step, the loop part highlighted. */
+function macroBars(m: Macro, range: [number, number]) {
+  if (!m.steps.length) return '';
+  const [lo, hi] = range;
+  // Bars grow from 0 (or from the bottom when the range has no negatives).
+  const zero = lo < 0 ? ((hi - 0) / (hi - lo)) * 16 : 16;
+  const y = (v: number) => ((hi - v) / (hi - lo)) * 16;
+  const bars = m.steps
+    .map((v, i) => {
+      const top = Math.min(y(v), zero);
+      const h = Math.max(Math.abs(zero - y(v)), 0.6);
+      return `<rect x="${i + 0.1}" y="${top.toFixed(2)}" width="0.8" height="${h.toFixed(2)}"${m.loop >= 0 && i >= m.loop ? ' class="loop"' : ''}/>`;
+    })
+    .join('');
+  return `<svg class="macro-bars" viewBox="0 0 ${Math.max(16, m.steps.length)} 16" preserveAspectRatio="none" aria-hidden="true">${bars}</svg>`;
+}
+
+function macroFields(channel: ChannelKind, macros: Record<MacroKind, Macro>) {
+  return MACRO_KINDS.map((kind) => {
+    const range = macroRange(kind, channel);
+    if (!range) return '';
+    const m = macros[kind];
+    return `<label for="i-m-${kind}">${macroLabel(kind, channel)}</label><div class="macro"><input type="text" id="i-m-${kind}" value="${formatMacro(m)}" spellcheck="false" autocomplete="off" inputmode="text" placeholder="${t('inst.macroOff')}"><div class="macro-graph" id="i-mg-${kind}">${macroBars(m, range)}</div></div>`;
+  }).join('');
+}
+
+function bindMacros(channel: ChannelKind, macros: Record<MacroKind, Macro>) {
+  for (const kind of MACRO_KINDS) {
+    const range = macroRange(kind, channel);
+    const input = $<HTMLInputElement>(`i-m-${kind}`);
+    if (!range || !input) continue;
+    input.addEventListener('input', () => {
+      macros[kind] = parseMacro(input.value, range);
+      $(`i-mg-${kind}`).innerHTML = macroBars(macros[kind], range);
+      changed();
+    });
+    // Show the cleaned-up text (clamped values, loop marker) once editing is done.
+    input.addEventListener('change', () => (input.value = formatMacro(macros[kind])));
+  }
+}
+
 function renderInstrumentPanel() {
   const kinds = ['pulse', 'wave', 'noise'] as const;
   const list =
@@ -1222,6 +1270,9 @@ function renderInstrumentPanel() {
     <div class="inst-grid" style="margin-top:8px">${Array.from({ length: INSTRUMENT_COUNT }, (_, i) => `<button type="button" data-i="${i}" aria-pressed="${i === instIndex}">${(i + 1).toString(16).toUpperCase()}</button>`).join('')}</div>
     <h2>${t('inst.heading', { kind: kindLabel(instKind), n: (instIndex + 1).toString(16).toUpperCase() })}</h2>
     <div class="form">${form}</div>
+    <h2>${t('inst.macros')}</h2>
+    <div class="form">${macroFields(instKind, ins.macros)}</div>
+    <p class="hint">${t('inst.macroHint')}</p>
     <div class="btn-row">
       <button type="button" class="btn primary" id="i-test">${t('inst.test')}</button>
       <button type="button" class="btn" id="i-use">${t('inst.use')}</button>
@@ -1278,6 +1329,7 @@ function renderInstrumentPanel() {
     bindRange('i-len', (v) => (n.length = v));
     bindCheck('i-narrow', (v) => (n.narrow = v));
   }
+  bindMacros(instKind, ins.macros);
   const testChannel = instKind === 'pulse' ? 0 : instKind === 'wave' ? 2 : 3;
   const test = $('i-test');
   test.addEventListener('pointerdown', () => {

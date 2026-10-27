@@ -594,6 +594,9 @@ await check('About dialog opens, its mini game runs and keys stay out of the tra
       const width = page.viewportSize().width;
       assert(box.x >= 0 && box.x + box.width <= width + 1, `${screen.name}: the dialog does not fit (${box.width}px)`);
       assert(await page.locator('#about-lcd').isVisible(), 'the game screen is not shown');
+      await page
+        .waitForFunction(() => document.querySelector('#about')?.dataset.game === 'ready', null, { timeout: 2000 })
+        .catch(() => {});
       assert((await dialog.getAttribute('data-game')) === 'ready', 'the game does not wait for A');
       // Desktop jumps with Space, which must not start the song behind the dialog; phones tap A.
       if (touch) await press(page, page.locator('#about-jump'), touch);

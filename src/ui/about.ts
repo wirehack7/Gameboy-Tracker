@@ -117,6 +117,8 @@ function buildDialog(): HTMLDialogElement {
     // The body is rebuilt on every open, so the canvas and the A button are new each time.
     el.querySelector('#about-lcd')!.addEventListener('pointerdown', jump);
     el.querySelector('#about-jump')!.addEventListener('pointerdown', jump);
+    // Draw the first frame now, so the dialog never shows a blank screen or a stale state.
+    render();
     cancelAnimationFrame(raf);
     raf = requestAnimationFrame(tick);
   });

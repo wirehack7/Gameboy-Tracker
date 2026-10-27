@@ -1,3 +1,4 @@
+import { track } from '../analytics/track';
 import { t } from '../i18n';
 import { SCREEN_H, SCREEN_W, createGame, drawGame, press, step } from './game';
 
@@ -81,6 +82,7 @@ function buildDialog(): HTMLDialogElement {
     el.querySelector('#about-best')!.textContent = pad(best);
     if (game.mode !== shownMode) {
       shownMode = game.mode;
+      if (game.mode === 'over') track('about-game', { score: game.score });
       el.querySelector('#about-hint')!.textContent = t(game.mode === 'over' ? 'about.over' : 'about.hint');
       el.dataset.game = game.mode;
     }

@@ -26,6 +26,10 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+        env:
+          # Analytics snippet (raw HTML) of the live site, from the repository variable
+          # TRACKING_CODE (Settings > Secrets and variables > Actions > Variables). Unset = no tracking.
+          TRACKING_CODE: ${{ vars.TRACKING_CODE }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

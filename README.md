@@ -98,6 +98,28 @@ The manual is written in `docs/MANUAL.md`; the build renders it into `manual.htm
 (`src/manual/`). `tests/docs/manual.test.ts` fails when an effect, export button or tab is missing from the
 manual, so update it in the same PR as the feature.
 
+### Analytics
+
+The repository contains no analytics. A deployment can add its own snippet at build time: the Pages workflow
+passes the repository variable `TRACKING_CODE` (raw HTML, e.g. the `<script>` tags of your analytics service;
+Settings > Secrets and variables > Actions > Variables) to the build, which adds it to every page
+(`src/analytics/plugin.ts`). Without it, as in local, dev and CI builds and forks, nothing is added. Browsers
+that send Do Not Track or Global Privacy Control don't load the snippet.
+
+The tracker reports user actions as `gb-tracker:track` window events with `{ name, data }` as their detail
+(`src/analytics/track.ts`): `play` (`mode`), `stop`, `export` (`format`), `import`, `song-new`, `song-demo`,
+`song-save`, `song-save-as`, `library` (`action`), `theme`, `language`, `piano`, `midi`, `about`, `about-game`
+(`score`), `pwa-install` and `pwa-launch`. To forward them, add a listener to the snippet, for example:
+
+```html
+<script>
+  addEventListener('gb-tracker:track', (e) => window.myAnalytics?.track(e.detail.name, e.detail.data));
+</script>
+```
+
+The service worker only handles requests inside the site's own scope, so external analytics scripts are never
+cached for offline use.
+
 ## Hardware coverage
 
 The APU tests in `tests/apu/` check the documented behaviour of the original hardware (Pan Docs, gbdev wiki

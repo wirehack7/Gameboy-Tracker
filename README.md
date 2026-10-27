@@ -102,9 +102,9 @@ manual, so update it in the same PR as the feature.
 
 The repository contains no analytics. A deployment can add its own snippet at build time: the Pages workflow
 passes the repository variable `TRACKING_CODE` (raw HTML, e.g. the `<script>` tags of your analytics service;
-Settings > Secrets and variables > Actions > Variables) to the build, which adds it to every page
-(`src/analytics/plugin.ts`). Without it, as in local, dev and CI builds and forks, nothing is added. Browsers
-that send Do Not Track or Global Privacy Control don't load the snippet.
+Settings > Secrets and variables > Actions > Variables) to the build, which puts it unchanged at the end of
+`<head>` of every page (`src/analytics/plugin.ts`). Without it, as in local, dev and CI builds and forks, nothing
+is added. Whether Do Not Track is respected is up to the snippet; many services have an option for it.
 
 The tracker reports user actions as `gb-tracker:track` window events with `{ name, data }` as their detail
 (`src/analytics/track.ts`): `play` (`mode`), `stop`, `export` (`format`), `import`, `song-new`, `song-demo`,

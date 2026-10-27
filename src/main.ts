@@ -1110,12 +1110,16 @@ function drawScopes() {
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
     const dpr = window.devicePixelRatio || 1;
-    if (canvas.width !== Math.round(w * dpr)) {
-      canvas.width = Math.round(w * dpr);
-      canvas.height = Math.round(h * dpr);
+    // Capped, so a layout glitch can never ask for a buffer the GPU refuses (a lost, blank canvas).
+    const bw = Math.min(2048, Math.round(w * dpr));
+    const bh = Math.min(512, Math.round(h * dpr));
+    if (canvas.width !== bw || canvas.height !== bh) {
+      canvas.width = bw;
+      canvas.height = bh;
     }
+    if (!w || !h) return;
     const g = canvas.getContext('2d')!;
-    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.setTransform(bw / w, 0, 0, bh / h, 0, 0);
     g.clearRect(0, 0, w, h);
     g.strokeStyle = ink;
     g.lineWidth = 1.5;

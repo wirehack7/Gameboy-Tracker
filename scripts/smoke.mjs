@@ -70,8 +70,10 @@ async function open(screen) {
   context.setDefaultTimeout(15000);
   const page = await context.newPage();
   const errors = [];
-  page.on('pageerror', (e) => errors.push(e.message));
-  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+  // Firefox rejects the old page's pending promises with this when it reloads; that is not a bug.
+  const unload = /Navigated away from page/;
+  page.on('pageerror', (e) => unload.test(e.message) || errors.push(e.message));
+  page.on('console', (m) => m.type() === 'error' && !unload.test(m.text()) && errors.push(m.text()));
   await page.goto(base, { waitUntil: 'load' });
   await page.waitForSelector('#pattern .prow');
   return { context, page, errors };
@@ -163,6 +165,13 @@ for (const screen of screens) {
     await check(`${screen.name}: piano and keypad enter notes`, async () => {
       const { context, page, errors } = await open(screen);
       try {
+        // The keypad comes with a coarse pointer or a narrow screen. Firefox has no mobile
+        // emulation, so a wide touch screen there reports a fine pointer and shows no keypad.
+        if (!(await page.evaluate(() => matchMedia('(pointer: coarse), (max-width: 759px)').matches))) {
+          assert(engine === 'firefox', 'a touch screen reports a fine pointer');
+          console.log(`skip ${screen.name}: Firefox reports a fine pointer at this width`);
+          return;
+        }
         const note = () => page.locator('#pattern .prow[data-row="0"] [data-ch="0"][data-f="0"]').textContent();
         // Put the cursor on row 00, channel 1, note field, clear it, then play E on the piano
         // and enter a note-off from the keypad.

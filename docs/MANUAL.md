@@ -199,15 +199,40 @@ the upper row starts one octave higher (`Q` = C, `2` = C#, … `P` = E two octav
 | `Space` | Play song / stop |
 | `Shift+Space` | Loop the current pattern from the cursor row / stop |
 | `Esc` | Record mode on / off |
-| `Delete`, `Backspace` | Clear field |
+| `Delete`, `Backspace` | Clear field (or the selected block) |
 | `Insert` | Insert an empty row in the current channel |
 | `[` or Numpad `−` | Octave down |
 | `]` or Numpad `+` | Octave up |
 | `Ctrl+S` / `⌘S` | Save the song in the library |
+| `Ctrl+Z` / `⌘Z` | Undo |
+| `Ctrl+Y`, `Ctrl+Shift+Z` | Redo |
+| `Shift+↑` `↓` `←` `→`, `Shift+Page Up/Down` | Select a block (rows × channels) |
+| `Ctrl+A` / `Ctrl+Shift+A` | Select the whole pattern / the whole channel |
+| `Ctrl+C` / `Ctrl+X` | Copy / cut the block (or the cell under the cursor) |
+| `Ctrl+V` / `Ctrl+Shift+V` | Paste at the cursor / paste only the filled cells (mix) |
+| `Ctrl+↑` / `Ctrl+↓` | Transpose the block a semitone up / down |
+| `Ctrl+Shift+↑` / `Ctrl+Shift+↓` | Transpose the block an octave up / down |
 
-Shortcuts are ignored while a text field (song title, instrument name, …) has the focus, and when `Ctrl`, `Alt`
-or `Cmd` is held, so browser shortcuts keep working. `Ctrl+S` (`⌘S` on a Mac) is the exception: it always saves
-the song in the library instead of saving the web page.
+Shortcuts are ignored while a text field (song title, instrument name, …) has the focus, so typing there works
+as usual. `Ctrl` stands for `⌘` on a Mac.
+
+### Undo, blocks, copy and paste
+
+- **Undo and redo** cover every change to the song: notes, instruments, waveforms, order list, song settings.
+  Changes made within half a second (typing a run of notes, dragging a slider) are one step. Use the keys
+  above, the **↶ ↷** buttons in the toolbar, or **↶ ↷** on the touch keypad. Opening or creating a song starts
+  a new history. Selecting, moving the cursor and playing are not changes.
+- **Selecting:** hold `Shift` and move the cursor, drag over the pattern with the mouse, or `Shift`-click to
+  extend from the cursor. A block always covers whole cells of one or more channels. A click or a cursor move
+  without `Shift` drops the selection.
+- **Copy, cut, paste:** without a selection they work on the cell under the cursor. Paste puts the top left of
+  the block at the cursor; rows and channels past the end of the pattern are left out. *Mix paste* skips the
+  empty cells of the block, so you can layer, for example, a drum part onto existing notes. After pasting, the
+  pasted block is selected, ready to be transposed. The clipboard is kept while the page is open and works
+  across patterns and songs.
+- **Transpose** moves the notes of the block by semitones or octaves; note-offs stay, notes stop at C-2 and B-8.
+  The **Transpose** buttons in the SONG tab still transpose the whole channel.
+- Cut, paste, transpose and delete need [record mode](#record-mode); copy and undo always work.
 
 ## Touch and phone use
 
@@ -727,7 +752,6 @@ These are planned and listed in the [roadmap](https://github.com/wirehack7/Gameb
 
 - XM and MOD import
 - Sample playback (drum kits, voices) on the wave channel
-- Undo/redo, block copy and paste
 - Instrument macros (per-tick tables)
 - Offline use as an installable app (PWA)
 

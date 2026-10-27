@@ -519,6 +519,11 @@ select.pill-btn {
   padding: 0 0.6ch;
 }
 
+.cell.sel {
+  background: color-mix(in srgb, var(--navy) 18%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--navy) 35%, transparent);
+}
+
 .cell span {
   cursor: pointer;
 }
@@ -1335,4 +1340,29 @@ a.btn {
 
 .about-a:active {
   background: var(--accent-hi);
+}
+
+/* ------------------------------------------------------------------ undo */
+
+.undo-btns {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.undo-btns .pill-btn {
+  min-width: 34px;
+  padding-inline: 8px;
+  font-size: 15px;
+}
+
+.pill-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Touch screens and phones have undo and redo on the keypad. */
+@media (pointer: coarse), (max-width: 759px) {
+  .undo-btns {
+    display: none;
+  }
 }

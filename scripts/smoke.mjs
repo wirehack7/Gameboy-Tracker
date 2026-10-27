@@ -10,6 +10,8 @@
  *   and on phones the bottom bar switches between the pattern, list and editor views;
  * - typing notes on the computer keyboard and tapping the on-screen piano and keypad change the song,
  *   and the song survives a reload (localStorage);
+ * - the song library saves (button and Ctrl+S), saves as, renames, duplicates, deletes and opens songs,
+ *   keeps them across a reload (IndexedDB), and its ZIP backup imports again;
  * - every export (song JSON, WAV, VGM, GBS, ROM, GBDK zip) hands over a file with the right
  *   header;
  * - the theme button cycles auto, light and dark;
@@ -270,6 +272,68 @@ await check('keyboard note entry is saved and survives a reload', async () => {
     await page.waitForSelector('#pattern .prow');
     const reloaded = await page.$$eval('#pattern .prow', (rows) => rows.slice(0, 3).map((r) => r.querySelector('.f0')?.textContent));
     assert(reloaded.join() === cells.join(), `after a reload rows 00-02 show ${reloaded.join(', ')}`);
+    assert(errors.length === 0, `errors: ${errors.join(' | ')}`);
+  } finally {
+    await context.close();
+  }
+});
+
+await check('song library saves, renames, duplicates, deletes and backs up songs', async () => {
+  const { context, page, errors } = await open(desktop);
+  try {
+    const rows = () => page.locator('#lib-list .lib-row');
+    const titles = () => page.$$eval('#lib-list .lib-title', (els) => els.map((e) => e.textContent).sort());
+    const state = () => page.locator('#f-state').getAttribute('data-state');
+    const row = (title) => rows().filter({ has: page.locator('.lib-title', { hasText: new RegExp(`^${title}$`) }) });
+    const answer = (text) => page.once('dialog', (d) => d.accept(text));
+
+    await page.locator('.tabs [data-tab="file"]').click();
+    await page.waitForSelector('#lib-list .hint, #lib-list .lib-row');
+    assert((await state()) === 'notInLibrary', `a fresh demo is ${await state()}`);
+    await page.locator('#f-store').click();
+    await rows().first().waitFor();
+    assert((await state()) === 'saved', `after Save the song is ${await state()}`);
+
+    // Editing marks the song unsaved; Ctrl+S saves it again.
+    await page.locator('.tabs [data-tab="song"]').click();
+    await page.locator('#s-title').fill('Smoke song');
+    assert(await page.locator('.tabs [data-tab="file"].dirty').count(), 'the FILE tab shows no unsaved dot');
+    await page.locator('#pattern').focus();
+    await page.keyboard.press('Control+s');
+    await page.locator('.tabs [data-tab="file"]:not(.dirty)').waitFor();
+    await page.locator('.tabs [data-tab="file"]').click();
+    assert((await titles()).join() === 'Smoke song', `library holds ${(await titles()).join(', ')}`);
+
+    answer('Second');
+    await page.locator('#f-saveas').click();
+    await rows().nth(1).waitFor();
+    assert((await row('Second').getAttribute('aria-current')) === 'true', 'Save as did not switch to the copy');
+
+    answer('Renamed');
+    await row('Smoke song').locator('[data-act="rename"]').click();
+    await row('Renamed').waitFor();
+    await row('Renamed').locator('[data-act="duplicate"]').click();
+    await row('Renamed \\(copy\\)').waitFor();
+    answer();
+    await row('Renamed \\(copy\\)').locator('[data-act="delete"]').click();
+    await row('Renamed \\(copy\\)').waitFor({ state: 'detached' });
+    assert((await titles()).join() === 'Renamed,Second', `library holds ${(await titles()).join(', ')}`);
+
+    // The library and the open song survive a reload.
+    await page.reload({ waitUntil: 'load' });
+    await page.locator('.tabs [data-tab="file"]').click();
+    await rows().nth(1).waitFor();
+    assert((await row('Second').getAttribute('aria-current')) === 'true', 'after a reload Second is not open');
+    assert((await state()) === 'saved', `after a reload the song is ${await state()}`);
+    await row('Renamed').locator('.lib-open').click();
+    await page.locator('.current-song strong', { hasText: 'Renamed' }).waitFor();
+
+    const backup = await download(page, 'f-backup');
+    assert(/\.zip$/.test(backup.name) && backup.bytes.subarray(0, 2).toString('latin1') === 'PK', `backup is ${backup.name}`);
+    assert(backup.bytes.includes('Renamed.gbt.json') && backup.bytes.includes('Second.gbt.json'), 'backup misses songs');
+    await page.locator('#f-input').setInputFiles({ name: backup.name, mimeType: 'application/zip', buffer: backup.bytes });
+    await rows().nth(3).waitFor();
+    assert((await titles()).join() === 'Renamed,Renamed,Second,Second', `after import: ${(await titles()).join(', ')}`);
     assert(errors.length === 0, `errors: ${errors.join(' | ')}`);
   } finally {
     await context.close();

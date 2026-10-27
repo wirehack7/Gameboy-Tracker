@@ -44,7 +44,8 @@ sounds right in the tracker sounds the same on hardware, in the exported ROM and
 4. Change the current octave with `[` and `]`, the instrument with the **INS** arrows in the toolbar.
 5. Open the **INSTR** tab on the right to shape the sound, **FILE** to save your song or export it.
 
-Your work is saved in the browser automatically after every change.
+Your work in progress is kept in the browser after every change. Press **Save** in the FILE tab (or `Ctrl+S`)
+to put the song into your song library, where you can keep as many songs as you like.
 
 ## The screen
 
@@ -92,7 +93,7 @@ Your work is saved in the browser automatically after every change.
 | INSTR | Instrument editor. |
 | WAVE | Waveform editor for the wave channel. |
 | SONG | Title, author, DMG/GBC, speed, pattern tools, follow playback. |
-| FILE | New, open, save, demo and all exports. |
+| FILE | The song library (new, save, open, rename, duplicate, delete), import, backups and all exports. |
 | HELP | Short reference of keys and effects, and a link to this manual. |
 
 On tablets the layout switches to two columns, on phones to separate views (see
@@ -201,9 +202,11 @@ the upper row starts one octave higher (`Q` = C, `2` = C#, … `P` = E two octav
 | `Insert` | Insert an empty row in the current channel |
 | `[` or Numpad `−` | Octave down |
 | `]` or Numpad `+` | Octave up |
+| `Ctrl+S` / `⌘S` | Save the song in the library |
 
 Shortcuts are ignored while a text field (song title, instrument name, …) has the focus, and when `Ctrl`, `Alt`
-or `Cmd` is held, so browser shortcuts keep working.
+or `Cmd` is held, so browser shortcuts keep working. `Ctrl+S` (`⌘S` on a Mac) is the exception: it always saves
+the song in the library instead of saving the web page.
 
 ## Touch and phone use
 
@@ -487,21 +490,50 @@ sound exactly like the target.
 
 ## Saving and loading
 
-The song is saved in your browser after every change and comes back when you reopen the page. This storage
-belongs to the browser and the device: it is lost when you clear the site data, and private windows may not
-keep it. Save a file for anything you want to keep.
+The tracker keeps two things in your browser:
 
-The **FILE** tab:
+- **The working copy:** the song you are editing. It is stored after every change and comes back when you
+  reload or reopen the page, even if you have not saved it.
+- **The song library:** every song you saved, with its title, author, hardware, number of patterns and the
+  date of the last save.
+
+Both belong to the browser and the device: they are lost when you clear the site data, and private windows may
+not keep them (the FILE tab says so when the browser refuses to store the library). Use **Back up library
+(.zip)** now and then, and download song files for anything you want to keep or move to another device.
+
+### The FILE tab
+
+The top line shows the title of the song you are editing and its state: **saved**, **unsaved changes**, or
+**not in the library** (a new song, the demo, or a song whose library entry was deleted). While there are
+unsaved changes the FILE tab shows a dot.
 
 | Button | Action |
 | --- | --- |
-| New | Start an empty song (asks first). |
-| Open… | Load a song file (`.gbt.json` or `.json`). |
-| Save (.json) | Download the song as `<title>.gbt.json`. |
-| Load demo | Replace the song with the demo (asks first). |
+| New | Start an empty song. |
+| Save | Save the song in the library, over its library entry if it has one (`Ctrl+S`). |
+| Save as… | Save a copy under a new title as a new library entry; you continue with the copy. |
+| Load demo | Replace the song with the demo. |
+| Import… | Add song files (`.gbt.json`, `.json`) or library backups (`.zip`) to the library. Several files can be chosen at once. A single song file is also opened. |
+| Download (.json) | Download the song you are editing as `<title>.gbt.json`. |
+| Back up library (.zip) | Download every library song as a `.gbt.json` file in one ZIP. Import the ZIP to restore them. |
+
+New, Load demo, opening a library song and importing a single file ask first when the song you are editing has
+unsaved changes.
+
+### The library list
+
+Tap or click a song's title to open it. The song you are editing is marked with a coloured bar. The buttons
+next to each song:
+
+| Button | Action |
+| --- | --- |
+| ✎ | Rename the song (asks for the new title). |
+| ⧉ | Duplicate it; the copy is called "… (copy)". |
+| ♫ | Use its instruments, waveforms and samples in the song you are editing; the notes stay as they are. Handy for a set of songs that share one sound. |
+| ✕ | Delete it from the library (asks first; this cannot be undone). |
 
 Song files are plain JSON and contain everything: patterns, order, instruments, waveforms, title, author, model
-and speed.
+and speed. Title and author are set in the **SONG** tab.
 
 ## Exporting
 

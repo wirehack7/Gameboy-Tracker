@@ -38,7 +38,7 @@ describe('manual', () => {
       .map(([, v]) => v);
 
   it('names every button of the FILE tab', () => {
-    const buttons = labels(/^(file\.(new|open|save|demo)|export\.\w+)$/);
+    const buttons = labels(/^(file\.(new|store|saveAs|demo|open|save|backup)|export\.\w+)$/);
     expect(buttons.length).toBeGreaterThan(8);
     for (const label of buttons) expect(manual, label).toContain(label);
   });

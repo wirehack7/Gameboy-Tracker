@@ -799,9 +799,8 @@ window closes it; while it is open, keys do not reach the tracker.
 
 Songs, instruments and the library never leave your device: they are kept in this browser's storage only, and
 song files are never uploaded. The public site may count visits and which features are used (for example play,
-export formats, import, theme and language) with a privacy-friendly analytics service. If your browser sends
-**Do Not Track** or **Global Privacy Control**, no analytics is loaded at all. The installed app also works
-offline without it.
+export formats, import, theme and language) with a privacy-friendly analytics service. The installed app also
+works offline without it.
 
 ## Not available yet
 

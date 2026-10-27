@@ -1,0 +1,50 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommitsDisabled",
+    "helpers:pinGitHubActionDigestsToSemver"
+  ],
+  "timezone": "Europe/Berlin",
+  "schedule": ["before 6am on monday"],
+  "labels": ["dependencies"],
+  "prConcurrentLimit": 5,
+  "rangeStrategy": "bump",
+  "platformAutomerge": false,
+  "lockFileMaintenance": {
+    "enabled": true,
+    "automerge": true,
+    "schedule": ["before 6am on monday"]
+  },
+  "packageRules": [
+    {
+      "description": "Keep the Playwright npm package and the CI browser image (mcr.microsoft.com/playwright:vX.Y.Z-noble) on the same version.",
+      "matchDepNames": ["playwright", "mcr.microsoft.com/playwright"],
+      "groupName": "Playwright",
+      "rangeStrategy": "pin"
+    },
+    {
+      "description": "Batch non-major devDependency updates into one PR and merge it once CI is green.",
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "matchDepNames": ["!playwright"],
+      "groupName": "devDependencies (non-major)",
+      "automerge": true
+    },
+    {
+      "description": "Batch non-major GitHub Actions updates and merge them once CI is green.",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["minor", "patch", "digest", "pin", "pinDigest"],
+      "matchDepNames": ["!mcr.microsoft.com/playwright"],
+      "groupName": "GitHub Actions (non-major)",
+      "automerge": true
+    },
+    {
+      "description": "Major updates get their own PR and a human review.",
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "addLabels": ["major"]
+    }
+  ]
+}

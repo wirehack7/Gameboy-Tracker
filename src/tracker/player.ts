@@ -1,4 +1,5 @@
 import { NR10, NR30, NR50, NR51, NR52, WAVE_RAM } from '../apu/apu';
+import { Macros, macroValue } from './macro';
 import { NOISE_NR43, NOTE_COUNT, PULSE_PERIODS, WAVE_PERIODS } from './notes';
 import { SAMPLE_START, SAMPLE_STOP } from './sample';
 import { CHANNEL_KINDS, CHANNEL_COUNT, Cell, EMPTY, NOTE_OFF, Song, packWave } from './song';
@@ -55,6 +56,12 @@ interface ChannelState {
   cutTick: number;
   delayed: Cell | null;
   delayTick: number;
+  /** Noise: 7-bit LFSR. */
+  narrow: boolean;
+  /** Ticks since the note started: the position in the instrument's macros. */
+  macroTick: number;
+  /** Volume the volume macro asks for this tick (-1: no volume macro). */
+  macroVolume: number;
 }
 
 function initialChannel(): ChannelState {
@@ -82,6 +89,9 @@ function initialChannel(): ChannelState {
     cutTick: -1,
     delayed: null,
     delayTick: -1,
+    narrow: false,
+    macroTick: 0,
+    macroVolume: -1,
   };
 }
 
@@ -256,6 +266,7 @@ export class Player {
         st.newNote = true;
         st.vibPhase = 0;
         st.portaTarget = -1;
+        st.macroTick = 0;
       }
     }
 
@@ -335,7 +346,72 @@ export class Player {
       st.volume = ins.volume;
       st.envUp = ins.envUp;
       st.envPeriod = ins.envPeriod;
+      st.narrow = ins.narrow;
     }
+  }
+
+  private instrumentMacros(ch: number): Macros {
+    const index = this.channels[ch].instrument;
+    const kind = CHANNEL_KINDS[ch];
+    const ins =
+      kind === 'pulse'
+        ? this.song.pulseInstruments[index]
+        : kind === 'wave'
+          ? this.song.waveInstruments[index]
+          : this.song.noiseInstruments[index];
+    return ins.macros;
+  }
+
+  /**
+   * Steps the instrument's macros for this tick: returns the period with the
+   * arpeggio and pitch macros applied, and changes duty, waveform, LFSR width
+   * and volume the way a driver does: duty by rewriting NRx1, the LFSR width
+   * with the next NR43 write, the wave channel's volume through NR32 (both
+   * take effect without a trigger), and the waveform and the pulse and noise
+   * volume by retriggering, as wave RAM may not be written while the channel
+   * plays and NRx2 only takes effect on a trigger.
+   */
+  private applyMacros(out: RegisterWriter, ch: number, period: number, noteOffset: number): number {
+    const st = this.channels[ch];
+    const kind = CHANNEL_KINDS[ch];
+    const m = this.instrumentMacros(ch);
+    const tick = st.macroTick;
+    const live = st.active && !st.trigger;
+
+    const arp = macroValue(m.arp, tick);
+    if (arp && st.note >= 0) {
+      const note = st.note + noteOffset;
+      period =
+        kind === 'noise'
+          ? periodForNote(ch, note + arp)
+          : period + periodForNote(ch, note + arp) - periodForNote(ch, note);
+    }
+    const pitch = kind === 'noise' ? null : macroValue(m.pitch, tick);
+    if (pitch) period += pitch;
+    if (kind !== 'noise') period = Math.max(0, Math.min(2047, period));
+
+    const duty = macroValue(m.duty, tick);
+    if (duty !== null) {
+      if (kind === 'pulse' && duty !== st.duty) {
+        st.duty = duty;
+        if (live) out.write(NRX1[ch], (st.duty << 6) | this.lengthBits(ch));
+      } else if (kind === 'wave' && duty !== st.wave && this.sampleIndex(st.instrument) < 0) {
+        st.wave = duty;
+        if (live) st.trigger = true;
+      } else if (kind === 'noise' && (duty === 1) !== st.narrow) {
+        st.narrow = duty === 1;
+        st.lastPeriod = -1;
+      }
+    }
+
+    const volume = macroValue(m.volume, tick);
+    const before = st.macroVolume;
+    st.macroVolume = volume === null ? -1 : Math.round((volume * st.volume) / 15);
+    if (volume !== null && st.macroVolume !== before && live && !st.trigger) {
+      if (kind === 'wave') out.write(0x1c, waveVolumeCode(st.macroVolume) << 5);
+      else st.trigger = true;
+    }
+    return period;
   }
 
   private instrumentLength(ch: number): number {
@@ -407,8 +483,9 @@ export class Player {
     }
 
     let period = st.period;
+    let offset = 0;
     if (st.arpeggio && st.note >= 0) {
-      const offset = [0, st.arpeggio >> 4, st.arpeggio & 15][tick % 3];
+      offset = [0, st.arpeggio >> 4, st.arpeggio & 15][tick % 3];
       if (offset) period = periodForNote(ch, st.note + offset);
     }
     if (st.effect === FX.VIBRATO && st.vibDepth && kind !== 'noise') {
@@ -416,6 +493,7 @@ export class Player {
       period += Math.round(Math.sin((st.vibPhase / 64) * Math.PI * 2) * st.vibDepth);
       period = Math.max(0, Math.min(max, period));
     }
+    period = this.applyMacros(out, ch, period, offset);
 
     if (st.trigger) {
       this.triggerChannel(out, ch, period, st.newNote);
@@ -425,6 +503,7 @@ export class Player {
     } else if (period !== st.lastPeriod && !(kind === 'wave' && this.sampleOn)) {
       this.writePeriod(out, ch, period, false);
     }
+    st.macroTick++;
   }
 
   private writePeriod(out: RegisterWriter, ch: number, period: number, trigger: boolean) {
@@ -433,7 +512,7 @@ export class Player {
     const lenEnable = this.instrumentLength(ch) ? 0x40 : 0;
     const t = trigger ? 0x80 : 0;
     if (ch === 3) {
-      const narrow = this.song.noiseInstruments[st.instrument].narrow ? 0x08 : 0;
+      const narrow = st.narrow ? 0x08 : 0;
       out.write(0x22, (period & 0xf7) | narrow);
       if (trigger) out.write(0x23, t | lenEnable);
       return;
@@ -447,11 +526,14 @@ export class Player {
     const st = this.channels[ch];
     const kind = CHANNEL_KINDS[ch];
     const sample = kind === 'wave' ? this.sampleIndex(st.instrument) : -1;
+    // A volume macro replaces the hardware envelope.
+    const volume = st.macroVolume >= 0 ? st.macroVolume : st.volume;
+    const envelope = st.macroVolume >= 0 ? 0 : (st.envUp ? 8 : 0) | st.envPeriod;
     if (sample >= 0) {
       // Samples play at a fixed rate; the driver's timer streams them, so
       // pitch effects do not apply and a volume change only rewrites NR32.
       if (!newNote && !this.sampleOn) return;
-      out.write(0x1c, waveVolumeCode(st.volume) << 5);
+      out.write(0x1c, waveVolumeCode(volume) << 5);
       if (newNote) {
         out.write(SAMPLE_START, sample);
         this.sampleOn = true;
@@ -472,7 +554,7 @@ export class Player {
       }
       out.write(NR30, 0x80);
       out.write(0x1b, this.lengthBits(ch));
-      out.write(0x1c, waveVolumeCode(st.volume) << 5);
+      out.write(0x1c, waveVolumeCode(volume) << 5);
     } else {
       if (ch === 0) {
         const ins = this.song.pulseInstruments[st.instrument];
@@ -480,7 +562,7 @@ export class Player {
       }
       const duty = kind === 'pulse' ? st.duty << 6 : 0;
       out.write(NRX1[ch], duty | this.lengthBits(ch));
-      out.write(NRX1[ch] + 1, (st.volume << 4) | (st.envUp ? 8 : 0) | st.envPeriod);
+      out.write(NRX1[ch] + 1, (volume << 4) | envelope);
     }
     this.writePeriod(out, ch, period, true);
   }
@@ -496,7 +578,12 @@ export class Player {
     this.loadInstrument(ch, instrument);
     st.note = note;
     st.period = periodForNote(ch, note);
-    this.triggerChannel(out, ch, st.period, true);
+    st.macroTick = 0;
+    st.trigger = true;
+    const period = this.applyMacros(out, ch, st.period, 0);
+    st.trigger = false;
+    this.triggerChannel(out, ch, period, true);
+    st.macroTick = 1;
     st.active = true;
   }
 

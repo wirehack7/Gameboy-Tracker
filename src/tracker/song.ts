@@ -1,4 +1,5 @@
 import type { Model } from '../apu/apu';
+import { Macros, emptyMacros, parseMacros } from './macro';
 import { SAMPLE_COUNT, SAMPLE_MAX_LENGTH } from './sample';
 
 /** Empty field marker for note, instrument, volume and effect. */
@@ -48,6 +49,8 @@ export interface PulseInstrument {
   sweepPeriod: number;
   sweepNegate: boolean;
   sweepShift: number;
+  /** Per-tick tables (see macro.ts). */
+  macros: Macros;
 }
 
 export interface WaveInstrument {
@@ -59,6 +62,7 @@ export interface WaveInstrument {
   length: number;
   /** Sample to play instead of the waveform, -1 = none (see sample.ts). */
   sample: number;
+  macros: Macros;
 }
 
 /** A 4-bit sample for the wave channel, at SAMPLE_RATE. */
@@ -76,6 +80,7 @@ export interface NoiseInstrument {
   length: number;
   /** 7-bit LFSR (metallic/periodic noise) */
   narrow: boolean;
+  macros: Macros;
 }
 
 export interface Song {
@@ -131,15 +136,24 @@ export function defaultPulse(i: number): PulseInstrument {
     sweepPeriod: 0,
     sweepNegate: false,
     sweepShift: 0,
+    macros: emptyMacros(),
   };
 }
 
 export function defaultWaveInstrument(i: number): WaveInstrument {
-  return { name: `Wave ${i + 1}`, wave: i, volume: 1, length: 0, sample: -1 };
+  return { name: `Wave ${i + 1}`, wave: i, volume: 1, length: 0, sample: -1, macros: emptyMacros() };
 }
 
 export function defaultNoise(i: number): NoiseInstrument {
-  return { name: `Noise ${i + 1}`, volume: 15, envUp: false, envPeriod: 1 + (i % 7), length: 0, narrow: i % 2 === 1 };
+  return {
+    name: `Noise ${i + 1}`,
+    volume: 15,
+    envUp: false,
+    envPeriod: 1 + (i % 7),
+    length: 0,
+    narrow: i % 2 === 1,
+    macros: emptyMacros(),
+  };
 }
 
 export function createSong(): Song {
@@ -211,12 +225,18 @@ export function parseSong(json: unknown): Song {
     speed: clampInt(raw.speed, 1, 31, 6),
     patterns,
     order: order.length ? order : [0],
-    pulseInstruments: base.pulseInstruments.map((d, i) => ({ ...d, ...raw.pulseInstruments?.[i] })),
+    pulseInstruments: base.pulseInstruments.map((d, i) => {
+      const p = { ...d, ...raw.pulseInstruments?.[i] };
+      return { ...p, macros: parseMacros(p.macros, 'pulse') };
+    }),
     waveInstruments: base.waveInstruments.map((d, i) => {
       const w = { ...d, ...raw.waveInstruments?.[i] };
-      return { ...w, sample: clampInt(w.sample, -1, samples.length - 1, -1) };
+      return { ...w, sample: clampInt(w.sample, -1, samples.length - 1, -1), macros: parseMacros(w.macros, 'wave') };
     }),
-    noiseInstruments: base.noiseInstruments.map((d, i) => ({ ...d, ...raw.noiseInstruments?.[i] })),
+    noiseInstruments: base.noiseInstruments.map((d, i) => {
+      const n = { ...d, ...raw.noiseInstruments?.[i] };
+      return { ...n, macros: parseMacros(n.macros, 'noise') };
+    }),
     waves: base.waves.map((d, i) => {
       const w = raw.waves?.[i];
       return Array.isArray(w) && w.length === 32 ? w.map((s) => clampInt(s, 0, 15, 0)) : d;

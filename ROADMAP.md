@@ -48,7 +48,7 @@ published to GitHub Pages automatically after merging. Finished items are ticked
 
 ## Phase 7 – Comfort
 - [x] Undo/redo, copy/paste of blocks, transpose
-- [ ] Instrument macros (per-tick tables for duty/volume/pitch)
+- [x] Instrument macros (per-tick tables for volume, arpeggio, pitch and duty/waveform/noise width)
 - [x] PWA: works offline, installable on phones
 - [x] MIDI input
 - [x] On-screen piano (mouse and touch)

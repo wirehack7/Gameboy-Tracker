@@ -14,6 +14,7 @@ import { unzip, zip } from './export/zip';
 import { MidiInput, MidiStatus, midiToNote } from './input/midi';
 import { NOTE_COUNT } from './tracker/notes';
 import { SongLibrary, SongMeta, copySounds, fileName, openStore, uniqueNames } from './tracker/library';
+import { openAbout } from './ui/about';
 import { pianoKeys, pianoOctaves, pianoWhites } from './ui/piano';
 import { scopeTrace } from './ui/scope';
 import {
@@ -1502,7 +1503,7 @@ function renderHelpPanel() {
   const table = (rows: [string, string][]) =>
     `<table class="help-table">${rows.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('')}</table>`;
   panelEl.innerHTML = `
-    <div class="btn-row" style="margin-top:0"><a class="btn primary" href="./manual.html" target="_blank" rel="noopener">${t('help.manual')}</a></div>
+    <div class="btn-row" style="margin-top:0"><a class="btn primary" href="./manual.html" target="_blank" rel="noopener">${t('help.manual')}</a><button type="button" class="btn" id="about-open">${t('help.about')}</button></div>
     <h2>${t('help.columns')}</h2>
     <div class="legend"><span class="f0">C-4 ${t('help.col.note')}</span><span class="f1">1 ${t('help.col.instrument')}</span><span class="f2">F ${t('help.col.volume')}</span><span class="f3">A ${t('help.col.effect')}</span><span class="f4">0F ${t('help.col.param')}</span></div>
     <h2>${t('help.keyboard')}</h2>${table(keys.map(([k, m]) => [k, t(m)]))}
@@ -1512,6 +1513,7 @@ function renderHelpPanel() {
     <p class="hint">${t('help.pianoHint')}</p>
     <h2>${t('help.effects')}</h2>${table(fx)}
     <p class="hint">${t('help.footer')}</p>`;
+  $('about-open').addEventListener('click', openAbout);
 }
 
 function renderPanel() {

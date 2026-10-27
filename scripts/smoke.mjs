@@ -15,6 +15,7 @@
  * - every export (song JSON, WAV, VGM, GBS, ROM, GBDK zip) hands over a file with the right
  *   header;
  * - the theme button cycles auto, light and dark;
+ * - the About dialog shows version and links, its mini game runs, and its keys stay out of the tracker;
  * - German, Spanish and French browsers get their UI language, still without sideways scrolling;
  * - the manual page loads its sections, contents list and images on desktop and phone;
  * - the scope traces stay centred while playing (Chromium) and the piano keys keep their size at every octave.
@@ -440,6 +441,44 @@ await check('theme button cycles auto, light and dark', async () => {
 });
 
 const phone = screens.find((s) => s.hasTouch && (s.viewport?.width ?? 0) < 760);
+
+await check('About dialog opens, its mini game runs and keys stay out of the tracker', async () => {
+  for (const screen of [desktop, phone]) {
+    const touch = !!screen.hasTouch;
+    const { context, page, errors } = await open(screen);
+    try {
+      if (touch) await press(page, page.locator('.mobile-nav [data-view="edit"]'), touch);
+      await press(page, page.locator('.tabs [data-tab="help"]'), touch);
+      const rec = await page.locator('#rec').getAttribute('aria-pressed');
+      await press(page, page.locator('#about-open'), touch);
+      const dialog = page.locator('dialog#about');
+      await dialog.waitFor({ state: 'visible' });
+      assert(/^Version \d+\.\d+\.\d+/.test(await page.locator('#about-version').textContent()), 'no version shown');
+      assert((await page.locator('#about-repo').getAttribute('href')).includes('github.com/wirehack7/Gameboy-Tracker'), 'no repo link');
+      assert((await page.locator('#about-manual').getAttribute('href')) === './manual.html', 'no manual link');
+      const box = await dialog.boundingBox();
+      const width = page.viewportSize().width;
+      assert(box.x >= 0 && box.x + box.width <= width + 1, `${screen.name}: the dialog does not fit (${box.width}px)`);
+      assert(await page.locator('#about-lcd').isVisible(), 'the game screen is not shown');
+      assert((await dialog.getAttribute('data-game')) === 'ready', 'the game does not wait for A');
+      // Desktop jumps with Space, which must not start the song behind the dialog; phones tap A.
+      if (touch) await press(page, page.locator('#about-jump'), touch);
+      else await page.keyboard.press('Space');
+      await page.waitForFunction(() => document.querySelector('#about')?.dataset.game !== 'ready');
+      await page.waitForFunction(() => Number(document.querySelector('#about-score')?.textContent) > 3, null, { timeout: 10000 });
+      assert((await page.locator('#play-song').getAttribute('aria-pressed')) !== 'true', 'Space in the game started the song');
+      if (shots) await page.screenshot({ path: join(shots, `${engine}-${screen.name}-about.png`) });
+      // Esc closes the dialog and must not toggle record mode in the tracker.
+      if (touch) await press(page, page.locator('#about-close'), touch);
+      else await page.keyboard.press('Escape');
+      await dialog.waitFor({ state: 'hidden' });
+      assert((await page.locator('#rec').getAttribute('aria-pressed')) === rec, 'closing the dialog toggled record mode');
+      assert(errors.length === 0, `errors: ${errors.join(' | ')}`);
+    } finally {
+      await context.close();
+    }
+  }
+});
 
 for (const [locale, lang] of [['de-DE', 'de'], ['es-ES', 'es'], ['fr-FR', 'fr']]) {
   await check(`${locale} browser gets the ${lang} UI and it fits a phone`, async () => {

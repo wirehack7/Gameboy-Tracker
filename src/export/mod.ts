@@ -16,11 +16,14 @@ import {
   Warnings,
   amigaUnits,
   basePeriodLength,
+  SAMPLE_NOTE,
   convertPattern,
+  instrumentSample,
   instrumentVolume,
   instrumentWaveform,
   notesByInstrument,
   refKey,
+  sampleData,
   usedInstruments,
   volumeEnvelope,
 } from './module';
@@ -71,8 +74,20 @@ export function modLayout(ref: InstrumentRef, notes: number[]): ModSampleLayout 
   return { ref, periodLength, offset, finetune, refNote };
 }
 
+/**
+ * Tracker samples play at 7936 Hz: SAMPLE_NOTE is written as C-2 (period
+ * 428, 8287 Hz) with finetune -6 (-3/4 semitone), which gives 7936 Hz.
+ */
+export const MOD_SAMPLE_LAYOUT = { periodLength: 0, offset: 12 - SAMPLE_NOTE, finetune: -6, refNote: SAMPLE_NOTE };
+
 /** Rendered sample data with its loop (in bytes; loopLength 0 = one-shot). */
 export function modSample(song: Song, layout: ModSampleLayout): { data: Int8Array; loopStart: number; loopLength: number } {
+  const hex = instrumentSample(song, layout.ref);
+  if (hex !== null) {
+    const raw = sampleData(hex).subarray(0, MAX_SAMPLE_BYTES);
+    const data = raw.length % 2 ? Int8Array.from([...raw, raw[raw.length - 1] ?? 0]) : raw;
+    return { data, loopStart: 0, loopLength: 0 };
+  }
   const wave = instrumentWaveform(song, layout.ref, layout.periodLength / basePeriodLength(layout.ref.kind));
   const env = volumeEnvelope(song, layout.ref);
   if (!env.length) {
@@ -108,7 +123,9 @@ export function encodeMod(song: Song): { data: Uint8Array; warnings: string[] } 
   const refs = usedInstruments(song);
   if (refs.length > 31) throw new Error(`MOD allows 31 samples, this song uses ${refs.length} instruments.`);
   const notes = notesByInstrument(song);
-  const layouts = refs.map((r) => modLayout(r, notes.get(refKey(r)) ?? []));
+  const layouts = refs.map((r) =>
+    instrumentSample(song, r) !== null ? { ref: r, ...MOD_SAMPLE_LAYOUT } : modLayout(r, notes.get(refKey(r)) ?? []),
+  );
   const byKey = new Map(layouts.map((l, i) => [refKey(l.ref), { layout: l, number: i + 1 }]));
 
   // Patterns are split into 64-row chunks; the first order gets its own copy
@@ -141,6 +158,7 @@ export function encodeMod(song: Song): { data: Uint8Array; warnings: string[] } 
         instrumentNumber: (r) => byKey.get(refKey(r))?.number ?? 0,
         globalVolume: false,
         orderPosition: (pos) => orderStart[pos] ?? 0,
+        isSample: (r) => instrumentSample(song, r) !== null,
       },
       warn,
       () => 36,

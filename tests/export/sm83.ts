@@ -208,6 +208,10 @@ export class Sm83 {
       case 0xc9:
         this.pc = this.pop();
         return;
+      case 0xd9: // reti
+        this.pc = this.pop();
+        this.ime = true;
+        return;
       case 0xe0:
         return this.wr(0xff00 | this.imm8(), this.a);
       case 0xf0:
@@ -233,7 +237,16 @@ export class Sm83 {
         return this.cb(this.imm8());
     }
     if (x === 0 && z === 1) {
-      if (y & 1) throw new Error(`unsupported opcode ${op.toString(16)}`); // add hl,rr
+      if (y & 1) {
+        // add hl,rr
+        const hl = this.hl;
+        const v = this.getRR(y >> 1);
+        const r = hl + v;
+        this.cycles += 4;
+        this.f = (this.f & 0x80) | ((hl & 0xfff) + (v & 0xfff) > 0xfff ? 0x20 : 0) | (r > 0xffff ? 0x10 : 0);
+        this.hl = r & 0xffff;
+        return;
+      }
       return this.setRR(y >> 1, this.imm16());
     }
     if (x === 0 && z === 3) {
@@ -308,6 +321,23 @@ export class Sm83 {
     this.flags(r === 0, false, false, c);
   }
 
+  /**
+   * Take a pending interrupt (IE & IF at 0xFFFF / 0xFF0F) if IME is set:
+   * clear its IF bit and call its vector. Returns whether one was taken.
+   */
+  interrupt(): boolean {
+    if (!this.ime) return false;
+    const pending = this.bus.read(0xffff) & this.bus.read(0xff0f) & 0x1f;
+    if (!pending) return false;
+    const bit = 31 - Math.clz32(pending & -pending);
+    this.bus.write(0xff0f, this.bus.read(0xff0f) & ~(1 << bit));
+    this.ime = false;
+    this.cycles += 8;
+    this.push(this.pc);
+    this.pc = 0x40 + bit * 8;
+    return true;
+  }
+
   /** Call a routine and run until it returns. */
   call(addr: number, maxSteps = 1_000_000) {
     const SENTINEL = 0xfeed;
@@ -324,7 +354,9 @@ export class Sm83 {
 /**
  * Cartridge + memory map: MBC bank select via writes to 0x2000-0x3FFF,
  * VRAM, WRAM, HRAM/IO. LY is derived from the CPU cycle count. Writes to
- * the APU registers are logged with the cycle they happened at.
+ * the APU registers are logged with the cycle they happened at. The timer
+ * (TIMA/TMA/TAC) counts on the falling edges of the internal divider, like
+ * the hardware, and requests the timer interrupt on overflow.
  */
 export class TestBus implements Bus {
   bank = 1;
@@ -333,7 +365,10 @@ export class TestBus implements Bus {
   readonly io = new Uint8Array(0x100);
   readonly apuWrites: { cycle: number; addr: number; value: number }[] = [];
   readonly bankWrites: number[] = [];
+  /** Clocks at which TIMA overflowed. */
+  readonly timerOverflows: number[] = [];
   cpu!: Sm83;
+  private timerAt = 0;
 
   constructor(private readonly rom: Uint8Array) {}
 
@@ -341,7 +376,26 @@ export class TestBus implements Bus {
     return Math.floor((this.cpu?.cycles ?? 0) / 456) % 154;
   }
 
+  /** Bring the timer up to the CPU's clock. */
+  updateTimer() {
+    const now = this.cpu?.cycles ?? 0;
+    const tac = this.io[0x07];
+    if (tac & 4) {
+      const shift = [10, 4, 6, 8][tac & 3]; // 4096, 262144, 65536, 16384 Hz
+      for (let e = (Math.floor(this.timerAt / (1 << shift)) + 1) << shift; e <= now; e += 1 << shift) {
+        this.io[0x05] = (this.io[0x05] + 1) & 0xff;
+        if (this.io[0x05] === 0) {
+          this.io[0x05] = this.io[0x06];
+          this.io[0x0f] |= 4;
+          this.timerOverflows.push(e);
+        }
+      }
+    }
+    this.timerAt = now;
+  }
+
   read(a: number): number {
+    if (a >= 0xff04 && a <= 0xff0f) this.updateTimer();
     if (a < 0x4000) return this.rom[a] ?? 0xff;
     if (a < 0x8000) return this.rom[this.bank * 0x4000 + (a - 0x4000)] ?? 0xff;
     if (a < 0xa000) return this.vram[a - 0x8000];
@@ -363,6 +417,7 @@ export class TestBus implements Bus {
     }
     else if (a >= 0xc000 && a < 0xe000) this.wram[a - 0xc000] = v;
     else if (a >= 0xff00) {
+      if (a >= 0xff04 && a <= 0xff0f) this.updateTimer();
       if (a >= 0xff10 && a < 0xff40) this.apuWrites.push({ cycle: this.cpu.cycles, addr: a & 0xff, value: v });
       this.io[a - 0xff00] = v;
     } else throw new Error(`write to unmapped ${a.toString(16)}`);

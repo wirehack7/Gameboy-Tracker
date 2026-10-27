@@ -1,6 +1,7 @@
 import './style.css';
 import { AudioClient } from './audio/client';
-import { toMono, waveFromAudio } from './audio/import';
+import { sampleFromAudio, toMono, waveFromAudio } from './audio/import';
+import { SAMPLE_COUNT, SAMPLE_RATE } from './tracker/sample';
 import { demoSong } from './tracker/demo';
 import { gbdkProject } from './export/gbdk';
 import { captureStream } from './export/stream';
@@ -23,6 +24,7 @@ import {
   WAVE_PRESETS,
   clonePattern,
   createSong,
+  deleteSample,
   emptyPattern,
   parseSong,
 } from './tracker/song';
@@ -999,6 +1001,8 @@ function renderInstrumentPanel() {
     form += slider('i-ss', t('inst.sweepShift'), p.sweepShift, 0, 7);
   } else if (instKind === 'wave') {
     const w = song.waveInstruments[instIndex];
+    const sampleOptions = [t('inst.noSample'), ...song.samples.map((x, i) => `${i.toString(16).toUpperCase()} ${escapeHtml(x.name)}`)];
+    form += `<label for="i-sample">${t('inst.sample')}</label><select id="i-sample">${sampleOptions.map((d, i) => `<option value="${i - 1}" ${w.sample === i - 1 ? 'selected' : ''}>${d}</option>`).join('')}</select>`;
     form += slider('i-wave', t('inst.waveform'), w.wave, 0, WAVE_COUNT - 1);
     form += `<label for="i-wvol">${t('inst.volume')}</label><select id="i-wvol">${[t('inst.waveMute'), '100 %', '50 %', '25 %'].map((d, i) => `<option value="${i}" ${w.volume === i ? 'selected' : ''}>${d}</option>`).join('')}</select>`;
     form += slider('i-len', t('inst.length'), w.length, 0, 256);
@@ -1054,6 +1058,10 @@ function renderInstrumentPanel() {
     bindRange('i-ss', (v) => (p.sweepShift = v));
   } else if (instKind === 'wave') {
     const w = song.waveInstruments[instIndex];
+    $<HTMLSelectElement>('i-sample').addEventListener('change', (e) => {
+      w.sample = Number((e.target as HTMLSelectElement).value);
+      changed();
+    });
     bindRange('i-wave', (v) => (w.wave = v));
     $<HTMLSelectElement>('i-wvol').addEventListener('change', (e) => {
       w.volume = Number((e.target as HTMLSelectElement).value);
@@ -1098,7 +1106,22 @@ function renderWavePanel() {
     <p class="hint">${t('wave.importHint')}</p>
     <h2>${t('wave.hex')}</h2>
     <div class="form"><label for="w-hex">${t('wave.data')}</label><input type="text" id="w-hex" spellcheck="false" maxlength="32"></div>
-    <p class="hint">${t('wave.hint')}</p>`;
+    <p class="hint">${t('wave.hint')}</p>
+    <h2>${t('sample.title')}</h2>
+    <div class="sample-list">${song.samples
+      .map(
+        (x, i) => `<div class="sample-row">
+          <span class="sample-num">${i.toString(16).toUpperCase()}</span>
+          <input type="text" data-sname="${i}" value="${escapeHtml(x.name)}" aria-label="${t('sample.name')}">
+          <span class="sample-len">${num(x.data.length / SAMPLE_RATE, 2)} s</span>
+          <button type="button" class="btn" data-splay="${i}" aria-label="${t('sample.play')}">▶</button>
+          <button type="button" class="btn" data-sdel="${i}" aria-label="${t('sample.delete')}">✕</button>
+        </div>`,
+      )
+      .join('')}</div>
+    <div class="btn-row"><button type="button" class="btn" id="s-import" ${song.samples.length >= SAMPLE_COUNT ? 'disabled' : ''}>${t('sample.import')}</button></div>
+    <input type="file" id="s-file" accept="audio/*,.wav" class="visually-hidden">
+    <p class="hint">${t('sample.hint')}</p>`;
   const wave = song.waves[waveIndex];
   const canvas = $<HTMLCanvasElement>('wave-canvas');
   const hexInput = $<HTMLInputElement>('w-hex');
@@ -1166,6 +1189,48 @@ function renderWavePanel() {
       draw();
       changed();
       toast(t('wave.imported', { name: file.name }));
+    } catch (err) {
+      toast(t('wave.importError', { error: (err as Error).message }));
+    }
+  });
+  bindSamples();
+}
+
+function bindSamples() {
+  panelEl.querySelectorAll<HTMLInputElement>('[data-sname]').forEach((el) =>
+    el.addEventListener('input', () => {
+      song.samples[Number(el.dataset.sname)].name = el.value;
+      changed();
+    }),
+  );
+  panelEl.querySelectorAll<HTMLButtonElement>('[data-splay]').forEach((b) =>
+    b.addEventListener('click', () => {
+      void ensureAudio();
+      audio.send({ type: 'sample', index: Number(b.dataset.splay) });
+    }),
+  );
+  panelEl.querySelectorAll<HTMLButtonElement>('[data-sdel]').forEach((b) =>
+    b.addEventListener('click', () => {
+      const i = Number(b.dataset.sdel);
+      if (!confirm(t('sample.confirmDelete', { name: song.samples[i].name }))) return;
+      deleteSample(song, i);
+      changed();
+      renderPanel();
+    }),
+  );
+  const input = $<HTMLInputElement>('s-file');
+  $('s-import').addEventListener('click', () => input.click());
+  input.addEventListener('change', async () => {
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file || song.samples.length >= SAMPLE_COUNT) return;
+    try {
+      const { channels, rate } = await decodeAudioFile(file);
+      const data = sampleFromAudio(toMono(channels), rate);
+      song.samples.push({ name: file.name.replace(/\.[^.]*$/, '').slice(0, 22), data });
+      changed();
+      renderPanel();
+      toast(t('sample.imported', { n: (song.samples.length - 1).toString(16).toUpperCase(), seconds: num(data.length / SAMPLE_RATE, 2) }));
     } catch (err) {
       toast(t('wave.importError', { error: (err as Error).message }));
     }

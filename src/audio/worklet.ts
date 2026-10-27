@@ -15,6 +15,7 @@ export type WorkletMessage =
   | { type: 'stop' }
   | { type: 'preview'; channel: number; note: number; instrument: number }
   | { type: 'release'; channel: number }
+  | { type: 'sample'; index: number }
   | { type: 'mute'; muted: boolean[] };
 
 export type WorkletEvent =
@@ -54,10 +55,13 @@ class TrackerProcessor extends AudioWorkletProcessor {
         engine.stop();
         break;
       case 'preview':
-        engine.player.preview(engine.apu, msg.channel, msg.note, msg.instrument);
+        engine.player.preview(engine.bus, msg.channel, msg.note, msg.instrument);
         break;
       case 'release':
-        engine.player.release(engine.apu, msg.channel);
+        engine.player.release(engine.bus, msg.channel);
+        break;
+      case 'sample':
+        engine.previewSample(msg.index);
         break;
       case 'mute':
         msg.muted.forEach((m, i) => (engine.apu.muted[i] = m));

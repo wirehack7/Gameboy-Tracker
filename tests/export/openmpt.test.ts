@@ -10,6 +10,7 @@ import { captureStream } from '../../src/export/stream';
 import { encodeXm } from '../../src/export/xm';
 import { demoSong } from '../../src/tracker/demo';
 import { noteFrequency } from '../../src/tracker/notes';
+import { SAMPLE_RATE } from '../../src/tracker/sample';
 import { EMPTY, Song, createSong } from '../../src/tracker/song';
 
 const RATE = 48000;
@@ -130,6 +131,22 @@ describe.runIf(!!process.env.OPENMPT)('libopenmpt cross-check', () => {
           l._openmpt_module_destroy(mod);
           expect(Math.abs(f / noteFrequency(note) - 1), `${name} ch${ch + 1} note ${note}: ${f} Hz`).toBeLessThan(tolerance);
         }
+    });
+
+    it(`${name}: samples play at their fixed 7936 Hz rate whatever the note`, async () => {
+      const l = await openmpt();
+      // A square with a period of 31 samples: 7936 / 31 = 256 Hz.
+      const period = Array.from({ length: 31 }, (_, i) => (i < 15 ? 'f' : '0')).join('');
+      for (const note of [12, 36, 60]) {
+        const song = toneSong(note, 2);
+        song.samples = [{ name: 'Square', data: period.repeat(256) }];
+        song.waveInstruments[0].sample = 0;
+        song.patterns[0].rows[1][2] = { note, instrument: EMPTY, volume: EMPTY, effect: 1, param: 0x40 };
+        const mod = load(l, encode(song).data);
+        const f = pitch(render(l, mod, 0.5));
+        l._openmpt_module_destroy(mod);
+        expect(Math.abs(f / (SAMPLE_RATE / 31) - 1), `${name} note ${note}: ${f} Hz`).toBeLessThan(tolerance);
+      }
     });
   }
 });

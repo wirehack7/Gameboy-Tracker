@@ -14,6 +14,7 @@ published to GitHub Pages automatically after merging. Finished items are ticked
   - [x] Register read masks, high-pass filter as on the hardware
 - [x] Hardware tests modelled on Blargg's `dmg_sound` (01–12) and Pan Docs
 - [x] Song model (patterns, order list, instruments, waveforms) and player with effects
+- [x] Waveform import from audio files; sample playback on the wave channel (timer-driven wave RAM streaming) in all exports
 - [x] Pattern editor in Game Boy style (off-white, red buttons) with dark mode
 - [x] Keyboard and touch input (on-screen keypad for phones)
 - [x] Playback via AudioWorklet, oscilloscope per channel

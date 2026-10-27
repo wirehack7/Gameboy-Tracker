@@ -1095,3 +1095,38 @@ a.btn {
     height: 20px;
   }
 }
+
+/* Sample list in the WAVE tab */
+.sample-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sample-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sample-row input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--field);
+  color: inherit;
+}
+
+.sample-num,
+.sample-len {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.sample-len {
+  min-width: 4.5em;
+  text-align: right;
+}

@@ -3,6 +3,7 @@
  * left to the browser; everything here works on plain Float32 PCM so it can
  * be tested without Web Audio.
  */
+import { SAMPLE_MAX_LENGTH, SAMPLE_RATE } from '../tracker/sample';
 
 /** Mix any number of channels down to mono. */
 export function toMono(channels: readonly Float32Array[]): Float32Array {
@@ -146,4 +147,26 @@ export function waveFromAudio(x: Float32Array, rate: number): number[] {
     cycle[i] = centred[k] * (1 - f) + centred[Math.min(centred.length - 1, k + 1)] * f;
   }
   return quantize4(resampleTo(cycle, 32));
+}
+
+/** Levels below this fraction of the peak count as silence when trimming. */
+const SILENCE = 0.02;
+
+/**
+ * Make a wave channel sample (hex levels, see Sample) from audio: resampled
+ * to SAMPLE_RATE, leading and trailing silence trimmed, cut to the maximum
+ * length and normalised to the 16 levels.
+ */
+export function sampleFromAudio(x: Float32Array, rate: number): string {
+  let peak = 0;
+  for (const v of x) peak = Math.max(peak, Math.abs(v));
+  if (peak < 1e-4) throw new Error('The file is silent');
+  let start = 0;
+  let end = x.length;
+  while (start < end && Math.abs(x[start]) < peak * SILENCE) start++;
+  while (end > start && Math.abs(x[end - 1]) < peak * SILENCE) end--;
+  const y = resample(x.subarray(start, end), rate, SAMPLE_RATE).subarray(0, SAMPLE_MAX_LENGTH);
+  return quantize4(y)
+    .map((v) => v.toString(16))
+    .join('');
 }

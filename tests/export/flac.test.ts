@@ -14,7 +14,9 @@ import { demoSong } from '../../src/tracker/demo';
 
 const ascii = (s: string) => Uint8Array.from(s, (c) => c.charCodeAt(0));
 
+/** ffmpeg is installed; CI sets FFMPEG=1 so a missing ffmpeg fails instead of skipping. */
 function hasFfmpeg() {
+  if (process.env.FFMPEG) return true;
   try {
     execFileSync('ffmpeg', ['-version'], { stdio: 'ignore' });
     return true;

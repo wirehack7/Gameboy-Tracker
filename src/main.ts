@@ -6,7 +6,9 @@ import { captureStream } from './export/stream';
 import { buildGbs, buildRom, romExtension } from './export/rom';
 import { encodeVgm } from './export/vgm';
 import { encodeWav, renderSong } from './export/wav';
+import { MidiInput, MidiStatus, midiToNote } from './input/midi';
 import { NOTE_COUNT } from './tracker/notes';
+import { pianoKeys, pianoOctaves } from './ui/piano';
 import {
   CHANNEL_KINDS,
   CHANNEL_COUNT,
@@ -38,6 +40,8 @@ import {
 const STORAGE_KEY = 'gb-tracker.song';
 const THEME_KEY = 'gb-tracker.theme';
 const VOLUME_KEY = 'gb-tracker.volume';
+const PIANO_KEY = 'gb-tracker.piano';
+const MIDI_KEY = 'gb-tracker.midi';
 const DEFAULT_VOLUME = 35;
 
 // ------------------------------------------------------------------ storage
@@ -81,6 +85,8 @@ let instrument = 0;
 let playing = false;
 let playPos = { order: -1, row: -1 };
 let follow = true;
+let pianoVisible = loadStored(PIANO_KEY) !== 'off';
+let pianoState = '';
 const muted = [false, false, false, false];
 let tab: 'inst' | 'wave' | 'song' | 'file' | 'help' = 'inst';
 let instKind: 'pulse' | 'wave' | 'noise' = 'pulse';
@@ -125,6 +131,8 @@ app.innerHTML = `
       <span class="field"><output class="badge" id="model"></output></span>
     </div>
     <div class="spacer"></div>
+    <button class="pill-btn" id="piano-toggle" type="button" title="Show or hide the on-screen piano">KEYS</button>
+    <button class="pill-btn" id="midi" type="button" title="Play and enter notes from a MIDI keyboard">MIDI</button>
     <label class="field volume" title="Master volume (playback only, exports are unaffected)">VOL <input type="range" id="vol" min="0" max="100" step="1"><output id="vol-out"></output></label>
     <button class="pill-btn" id="theme" type="button"></button>
   </header>
@@ -149,6 +157,7 @@ app.innerHTML = `
     <main class="editor" aria-label="Pattern editor">
       <div class="chan-head" id="chan-head"></div>
       <div class="pattern" id="pattern" tabindex="0" role="grid" aria-label="Pattern"></div>
+      <div class="piano" id="piano" aria-label="Piano"></div>
       <div class="keypad" id="keypad"></div>
     </main>
     <aside class="sidebar right" aria-label="Editors">
@@ -231,6 +240,7 @@ function renderHeader() {
   $('model').textContent = song.model === 'cgb' ? 'GBC' : 'DMG';
   renderOrderList();
   renderInstList();
+  renderPiano();
 }
 
 function renderOrderList() {
@@ -369,10 +379,18 @@ function preview(ch: number, note: number) {
   if (note < 0) return;
   void ensureAudio();
   audio.send({ type: 'preview', channel: ch, note, instrument });
+  highlightKey(note);
 }
 
 function release(ch: number) {
   if (!playing) audio.send({ type: 'release', channel: ch });
+  highlightKey(-1);
+}
+
+/** Piano, MIDI and touch note input: enter on a note field, otherwise just play it. */
+function playNote(note: number) {
+  if (FIELDS[cursor.field] === 'note') putNote(note);
+  else preview(cursor.ch, note);
 }
 
 function putNote(note: number) {
@@ -529,16 +547,19 @@ function key(label: string, cls: string, data: string) {
 function renderKeypad() {
   const isNote = FIELDS[cursor.field] === 'note';
   const kind = keypadEl.dataset.kind;
-  if (kind === (isNote ? 'note' : 'hex') && keypadEl.dataset.oct === String(octave)) return;
+  const state = `${octave}/${pianoVisible}`;
+  if (kind === (isNote ? 'note' : 'hex') && keypadEl.dataset.state === state) return;
   keypadEl.dataset.kind = isNote ? 'note' : 'hex';
-  keypadEl.dataset.oct = String(octave);
+  keypadEl.dataset.state = state;
   const navRow = `<div class="row">${key('◀', 'action', 'data-act="prev" aria-label="Previous field"')}${key('▲', 'action', 'data-act="up" aria-label="Row up"')}${key('▼', 'action', 'data-act="down" aria-label="Row down"')}${key('▶', 'action', 'data-act="next" aria-label="Next field"')}</div>`;
   if (isNote) {
     const names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
     const keys = names.map((n, i) => key(n, n.includes('#') ? 'sharp' : '', `data-semi="${i}"`));
+    const noteRows = pianoVisible
+      ? ''
+      : `<div class="row">${keys.slice(0, 6).join('')}</div><div class="row">${keys.slice(6).join('')}</div>`;
     keypadEl.innerHTML = `
-      <div class="row">${keys.slice(0, 6).join('')}</div>
-      <div class="row">${keys.slice(6).join('')}</div>
+      ${noteRows}
       <div class="row">
         ${key('OCT−', 'action', 'data-act="oct-"')}${key('OCT+', 'action', 'data-act="oct+"')}
         ${key('OFF', 'action', 'data-act="off"')}${key('DEL', 'red', 'data-act="del"')}
@@ -595,6 +616,112 @@ keypadEl.addEventListener('pointerdown', (e) => {
 });
 keypadEl.addEventListener('pointerup', () => release(cursor.ch));
 keypadEl.addEventListener('pointercancel', () => release(cursor.ch));
+
+// ------------------------------------------------------------------- piano
+
+function renderPiano() {
+  const pianoEl = document.getElementById('piano');
+  if (!pianoEl) return;
+  pianoEl.hidden = !pianoVisible;
+  $('piano-toggle').setAttribute('aria-pressed', String(pianoVisible));
+  if (!pianoVisible) return;
+  const octaves = pianoOctaves(pianoEl.clientWidth || window.innerWidth);
+  const state = `${octave}/${octaves}`;
+  if (state === pianoState) return;
+  pianoState = state;
+  const keys = pianoKeys(Math.min(octave, 8), octaves);
+  const whites = keys.filter((k) => !k.black).length;
+  pianoEl.style.setProperty('--whites', String(whites));
+  pianoEl.innerHTML = keys
+    .map(
+      (k) =>
+        `<button type="button" tabindex="-1" class="pkey ${k.black ? 'black' : 'white'}" data-note="${k.note}" style="--i:${k.white}" aria-label="${k.label || k.note}">${k.label ? `<span>${k.label}</span>` : ''}</button>`,
+    )
+    .join('');
+}
+
+const pianoEl = $('piano');
+
+function highlightKey(note: number) {
+  for (const el of pianoEl.querySelectorAll('.pkey.down')) el.classList.remove('down');
+  if (note >= 0) pianoEl.querySelector(`[data-note="${note}"]`)?.classList.add('down');
+}
+
+let pianoPointer: number | null = null;
+let pianoNote = -1;
+const keyAt = (x: number, y: number) =>
+  document.elementFromPoint(x, y)?.closest<HTMLElement>('.pkey[data-note]') ?? null;
+
+pianoEl.addEventListener('pointerdown', (e) => {
+  const k = keyAt(e.clientX, e.clientY);
+  if (!k) return;
+  e.preventDefault();
+  pianoPointer = e.pointerId;
+  pianoEl.setPointerCapture(e.pointerId);
+  pianoNote = Number(k.dataset.note);
+  playNote(pianoNote);
+});
+// Gliding over the keys plays them without entering more notes.
+pianoEl.addEventListener('pointermove', (e) => {
+  if (e.pointerId !== pianoPointer) return;
+  const k = keyAt(e.clientX, e.clientY);
+  if (!k || Number(k.dataset.note) === pianoNote) return;
+  pianoNote = Number(k.dataset.note);
+  preview(cursor.ch, pianoNote);
+});
+const pianoUp = (e: PointerEvent) => {
+  if (e.pointerId !== pianoPointer) return;
+  pianoPointer = null;
+  pianoNote = -1;
+  release(cursor.ch);
+};
+pianoEl.addEventListener('pointerup', pianoUp);
+pianoEl.addEventListener('pointercancel', pianoUp);
+
+$('piano-toggle').addEventListener('click', () => {
+  pianoVisible = !pianoVisible;
+  store(PIANO_KEY, pianoVisible ? 'on' : 'off');
+  pianoState = '';
+  renderPiano();
+  renderKeypad();
+});
+window.addEventListener('resize', () => renderPiano());
+renderPiano();
+
+// -------------------------------------------------------------------- MIDI
+
+const midi = new MidiInput();
+const midiHeld = new Set<number>();
+
+function renderMidi(s: MidiStatus) {
+  const b = $('midi');
+  b.setAttribute('aria-pressed', String(s.enabled));
+  b.textContent = s.enabled ? `MIDI ${s.inputs.length}` : 'MIDI';
+  b.title = s.error ?? (s.enabled ? `MIDI inputs: ${s.inputs.join(', ') || 'none connected'}` : 'Play and enter notes from a MIDI keyboard');
+  if (s.error) toast(s.error);
+}
+midi.onStatus = renderMidi;
+midi.onEvent = (e) => {
+  const note = midiToNote(e.note);
+  if (note === null) return;
+  if (e.type === 'on') {
+    midiHeld.add(note);
+    playNote(note);
+  } else {
+    midiHeld.delete(note);
+    if (midiHeld.size === 0) release(cursor.ch);
+  }
+};
+$('midi').addEventListener('click', () => {
+  if (midi.status.enabled) {
+    midi.disable();
+    store(MIDI_KEY, 'off');
+  } else {
+    void midi.enable().then((s) => store(MIDI_KEY, s.enabled ? 'on' : 'off'));
+  }
+});
+if (!midi.status.supported) $('midi').title = 'Web MIDI is not supported by this browser.';
+if (loadStored(MIDI_KEY) === 'on' && midi.status.supported) void midi.enable();
 
 // ---------------------------------------------------------------- toolbar
 
@@ -1171,6 +1298,8 @@ function renderHelpPanel() {
     <h2>KEYBOARD</h2>${table(keys)}
     <h2>TOUCH</h2>
     <p class="hint">Tap a field, then enter notes or hex values on the keypad. The arrow keys move the cursor. ▶ plays the song, ⟳ loops the pattern from the cursor, ■ stops.</p>
+    <h2>PIANO AND MIDI</h2>
+    <p class="hint">KEYS shows the piano (mouse or touch). On a note field a key enters the note, elsewhere it only plays it; sliding over the keys plays without entering. It starts at the current octave. MIDI connects all MIDI keyboards (Chrome, Edge, Firefox; not Safari). MIDI note 60 is C-4.</p>
     <h2>EFFECTS</h2>${table(fx)}
     <p class="hint">Sound is generated cycle-accurately from the Game Boy APU registers. One tick is one frame (≈ 59.73 Hz).</p>`;
 }

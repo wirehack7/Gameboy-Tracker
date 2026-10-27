@@ -118,6 +118,11 @@ export class Player {
   private breakRow = -1;
   /** Rows of a single pattern to loop (pattern play mode). */
   loopPattern = false;
+  /**
+   * Skip reloading wave RAM when the same wave plays again. Exports turn
+   * this off so every note is self-contained and the stream can loop anywhere.
+   */
+  cacheWave = true;
 
   constructor(public song: Song) {
     this.speed = song.speed;
@@ -418,7 +423,7 @@ export class Player {
       // Turning the DAC off first disables the channel, so loading wave RAM
       // and retriggering never hit the DMG wave RAM corruption bug.
       out.write(NR30, 0);
-      if (this.loadedWave !== st.wave) {
+      if (this.loadedWave !== st.wave || !this.cacheWave) {
         const bytes = packWave(this.song.waves[st.wave]);
         bytes.forEach((b, i) => out.write(WAVE_RAM + i, b));
         this.loadedWave = st.wave;

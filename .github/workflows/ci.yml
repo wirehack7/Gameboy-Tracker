@@ -15,5 +15,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Install GBDK-2020 (compiles the exported C code in the tests)
+        run: |
+          curl -sSL https://github.com/gbdk-2020/gbdk-2020/releases/download/4.3.0/gbdk-linux64.tar.gz | tar -xz -C "$RUNNER_TEMP"
+          echo "GBDK_HOME=$RUNNER_TEMP/gbdk/" >> "$GITHUB_ENV"
       - run: npm test
       - run: npm run build

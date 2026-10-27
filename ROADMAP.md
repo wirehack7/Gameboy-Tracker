@@ -32,8 +32,8 @@ published to GitHub Pages automatically after merging. Finished items are ticked
 - [x] VGM export (Game Boy chip), useful for other tools
 
 ## Phase 4 – Game Boy formats
-- [ ] GBS export (Game Boy Sound System)
-- [ ] Playable ROM (.gb/.gbc) with built-in player and display
+- [x] GBS export (Game Boy Sound System)
+- [x] Playable ROM (.gb/.gbc) with built-in player and display
 
 ## Phase 5 – Tracker formats
 - [ ] XM export (samples from the channels, patterns and effects translated)

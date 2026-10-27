@@ -3,6 +3,7 @@ import { AudioClient } from './audio/client';
 import { demoSong } from './tracker/demo';
 import { gbdkProject } from './export/gbdk';
 import { captureStream } from './export/stream';
+import { buildGbs, buildRom, romExtension } from './export/rom';
 import { encodeVgm } from './export/vgm';
 import { encodeWav, renderSong } from './export/wav';
 import { NOTE_COUNT } from './tracker/notes';
@@ -1062,9 +1063,11 @@ function renderFilePanel() {
     <div class="btn-row">
       <button type="button" class="btn primary" id="x-wav">Export WAV</button>
       <button type="button" class="btn" id="x-vgm">Export VGM</button>
+      <button type="button" class="btn" id="x-gbs">Export GBS</button>
+      <button type="button" class="btn" id="x-rom">Game Boy ROM</button>
       <button type="button" class="btn" id="x-gbdk">GBDK project (.zip)</button>
     </div>
-    <p class="hint" id="x-status">GBDK: C array of the register stream, a tiny C driver and a Makefile. VGM plays in any VGM player. More formats (GBS/ROM, XM, MOD, video) are on the roadmap.</p>`;
+    <p class="hint" id="x-status">ROM: runs on hardware and emulators (.gb, or .gbc for CGB songs). GBS and VGM play in music players. GBDK: C array of the register stream, a tiny C driver and a Makefile. More formats (XM, MOD, video) are on the roadmap.</p>`;
   const input = $<HTMLInputElement>('f-input');
   $('f-new').addEventListener('click', () => {
     if (!confirm('Start a new song? The current song will be replaced.')) return;
@@ -1109,6 +1112,21 @@ function renderFilePanel() {
     const vgm = encodeVgm(captureStream(structuredClone(song)), { title: song.title, author: song.author });
     download(`${fileBase()}.vgm`, vgm as BlobPart, 'application/octet-stream');
   });
+  const exportBinary = (build: () => { name: string; data: Uint8Array }) => {
+    try {
+      const { name, data } = build();
+      download(name, data as BlobPart, 'application/octet-stream');
+      $('x-status').textContent = `${name}: ${data.length} bytes.`;
+    } catch (err) {
+      $('x-status').textContent = (err as Error).message;
+    }
+  };
+  $('x-gbs').addEventListener('click', () =>
+    exportBinary(() => ({ name: `${fileBase()}.gbs`, data: buildGbs(structuredClone(song)).data })),
+  );
+  $('x-rom').addEventListener('click', () =>
+    exportBinary(() => ({ name: `${fileBase()}.${romExtension(song)}`, data: buildRom(structuredClone(song)).data })),
+  );
   $('x-gbdk').addEventListener('click', () => {
     const { zip, name, size } = gbdkProject(structuredClone(song));
     download(`${name}_gbdk.zip`, zip as BlobPart, 'application/zip');

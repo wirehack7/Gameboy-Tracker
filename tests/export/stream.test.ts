@@ -7,6 +7,7 @@ import { Apu } from '../../src/apu/apu';
 import { Engine } from '../../src/audio/engine';
 import { PLAYER_C, PLAYER_H, exampleMain, gbdkProject, makefile, songSources, symbolName } from '../../src/export/gbdk';
 import { StreamPlayer, Write, captureStream, encodeStream, optimizeStream } from '../../src/export/stream';
+import { NINTENDO_LOGO } from '../../src/export/rom';
 import { encodeVgm, frameToSample } from '../../src/export/vgm';
 import { crc32 } from '../../src/export/zip';
 import { demoSong } from '../../src/tracker/demo';
@@ -270,6 +271,8 @@ describe('GBDK export', () => {
       for (let i = 0x134; i <= 0x14c; i++) sum = (sum - rom[i] - 1) & 0xff;
       expect(rom[0x14d]).toBe(sum);
       expect(rom[0x143] & 0x80).toBe(model === 'cgb' ? 0x80 : 0);
+      // Cross-check the logo our own ROM export writes.
+      expect([...rom.subarray(0x104, 0x134)]).toEqual([...NINTENDO_LOGO]);
       // The song data is in the ROM verbatim.
       const { data } = encodeStream(optimizeStream(captureStream(song)));
       expect(rom.indexOf(Buffer.from(data))).toBeGreaterThan(0x150);

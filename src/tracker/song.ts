@@ -159,9 +159,9 @@ const clampInt = (v: unknown, min: number, max: number, fallback: number) =>
 
 /** Validate and normalise a parsed song file. Throws on unusable input. */
 export function parseSong(json: unknown): Song {
-  if (!json || typeof json !== 'object') throw new Error('Keine gültige Song-Datei');
+  if (!json || typeof json !== 'object') throw new Error('Not a valid song file');
   const raw = json as Partial<Song>;
-  if (!Array.isArray(raw.patterns) || !Array.isArray(raw.order)) throw new Error('Song-Datei ohne Patterns');
+  if (!Array.isArray(raw.patterns) || !Array.isArray(raw.order)) throw new Error('Song file has no patterns');
   const base = createSong();
   const cell = (c: Partial<Cell> | undefined): Cell => ({
     note: c?.note === NOTE_OFF ? NOTE_OFF : clampInt(c?.note, EMPTY, 83, EMPTY),

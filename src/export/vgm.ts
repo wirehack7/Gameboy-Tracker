@@ -3,6 +3,7 @@
  * https://vgmrips.net/wiki/VGM_Specification
  */
 import { CPU_HZ } from '../apu/apu';
+import { SAMPLE_RELOAD_CYCLES, SAMPLE_START, SAMPLE_STOP, SampleVoice } from '../tracker/sample';
 import { CYCLES_PER_TICK } from '../tracker/song';
 import { RegisterStream } from './stream';
 
@@ -17,9 +18,14 @@ export interface VgmTags {
   notes?: string;
 }
 
+/** Sample position (44.1 kHz) of a CPU clock. */
+export function cycleToSample(cycle: number): number {
+  return Math.round((cycle * VGM_RATE) / CPU_HZ);
+}
+
 /** Sample position (44.1 kHz) of the start of a frame. */
 export function frameToSample(frame: number): number {
-  return Math.round((frame * CYCLES_PER_TICK * VGM_RATE) / CPU_HZ);
+  return cycleToSample(frame * CYCLES_PER_TICK);
 }
 
 function gd3(tags: VgmTags): Uint8Array {
@@ -80,14 +86,35 @@ export function encodeVgm(stream: RegisterStream, tags: VgmTags = {}): Uint8Arra
     pos = target;
   };
 
+  // Samples: the timer interrupt's wave RAM reloads, at their exact clocks.
+  const voice = new SampleVoice();
+  const vgmWriter = { write: (a: number, v: number) => data.push(0xb3, a - 0x10, v) };
+  let reloadAt = Infinity;
+  const reloadsUntil = (cycle: number) => {
+    while (voice.active && reloadAt <= cycle) {
+      waitUntil(cycleToSample(reloadAt));
+      voice.reload(vgmWriter);
+      reloadAt += SAMPLE_RELOAD_CYCLES;
+    }
+  };
+
   stream.frames.forEach((writes, f) => {
+    const t = f * CYCLES_PER_TICK;
+    reloadsUntil(t);
     waitUntil(frameToSample(f));
     if (f === stream.loopFrame) {
       loopDataOffset = data.length;
       loopSample = pos;
     }
-    for (const [a, v] of writes) data.push(0xb3, a - 0x10, v);
+    for (const [a, v] of writes) {
+      if (a === SAMPLE_START) {
+        voice.start(stream.samples?.[v] ?? new Uint8Array(0), vgmWriter);
+        reloadAt = t + SAMPLE_RELOAD_CYCLES;
+      } else if (a === SAMPLE_STOP) voice.stop();
+      else vgmWriter.write(a, v);
+    }
   });
+  reloadsUntil(stream.frames.length * CYCLES_PER_TICK - 1);
   waitUntil(frameToSample(stream.frames.length));
   data.push(0x66);
 

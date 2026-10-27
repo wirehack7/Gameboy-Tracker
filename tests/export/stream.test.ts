@@ -200,6 +200,16 @@ describe('VGM export', () => {
   });
 });
 
+/** The demo song with a short sample on CH3. */
+function sampleDemo(): Song {
+  const song = demoSong();
+  song.title = 'Sampled';
+  song.samples = [{ name: 'Kick', data: 'f'.repeat(31 * 3) + '0'.repeat(20) }];
+  song.waveInstruments[3].sample = 0;
+  Object.assign(song.patterns[0].rows[2][2], { note: 36, instrument: 3 });
+  return song;
+}
+
 describe('GBDK export', () => {
   it('derives C symbol names', () => {
     expect(symbolName('My Song!')).toBe('my_song');
@@ -249,9 +259,30 @@ describe('GBDK export', () => {
   });
 
   // Compiles the exported project with the real GBDK toolchain (CI sets GBDK_HOME).
+  it('exports samples as C arrays and starts the timer in the example', () => {
+    const song = sampleDemo();
+    const name = symbolName(song.title);
+    const stream = captureStream(song);
+    const src = songSources(song, stream, name);
+    expect(src.header).toContain(`extern const uint8_t * const ${name}_samples[];`);
+    expect(src.source).toContain(`const uint16_t ${name}_sample_chunks[] = { 4u };`);
+    const sampleBytes = src.source.slice(src.source.indexOf(`${name}_sample0[]`));
+    const bytes = [...sampleBytes.matchAll(/0x([0-9A-F]{2})/g)].map((m) => parseInt(m[1], 16));
+    expect(bytes).toEqual([...stream.samples![0]]);
+    expect(exampleMain(song, name)).toContain(`gbtr_set_samples(${name}_samples, ${name}_sample_chunks);`);
+    expect(exampleMain(demoSong(), name)).not.toContain('gbtr_set_samples');
+    expect(PLAYER_C).toContain('NR33_REG = 0x00;');
+    expect(PLAYER_C).toContain('NR34_REG = 0x87;');
+    expect(PLAYER_C).toContain('TMA_REG = 0xC0;');
+    expect(PLAYER_C).toContain('TAC_REG = 0x07;');
+  });
+
   it.runIf(!!process.env.GBDK_HOME)('compiles with GBDK-2020 into a valid ROM', () => {
-    const song = demoSong();
-    for (const model of ['dmg', 'cgb'] as const) {
+    for (const [song, model] of [
+      [demoSong(), 'dmg'],
+      [demoSong(), 'cgb'],
+      [sampleDemo(), 'dmg'],
+    ] as const) {
       song.model = model;
       const dir = mkdtempSync(join(tmpdir(), 'gbtr-gbdk-'));
       const name = symbolName(song.title);

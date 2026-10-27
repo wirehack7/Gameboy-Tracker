@@ -6,16 +6,23 @@
  */
 import type { Model } from '../apu/apu';
 import { Player, RegisterWriter } from '../tracker/player';
+import { NR33 } from '../apu/apu';
+import { SAMPLE_START, SAMPLE_STOP, sampleChunks } from '../tracker/sample';
 import { Song } from '../tracker/song';
 
 export type Write = [addr: number, value: number];
 
 export interface RegisterStream {
   model: Model;
-  /** Writes per frame (register addresses as the low byte of 0xFFxx). */
+  /**
+   * Writes per frame (register addresses as the low byte of 0xFFxx, plus the
+   * SAMPLE_START / SAMPLE_STOP pseudo registers).
+   */
   frames: Write[][];
   /** Frame the song loops back to after the last frame. */
   loopFrame: number;
+  /** Wave RAM chunks of each sample (see sampleChunks), by sample number. */
+  samples?: Uint8Array[];
 }
 
 /** Hard limit: 30 minutes of frames. */
@@ -46,7 +53,7 @@ export function captureStream(song: Song, maxFrames = MAX_FRAMES): RegisterStrea
     frames.push(current);
     current = [];
   }
-  return { model: song.model, frames, loopFrame };
+  return { model: song.model, frames, loopFrame, samples: song.samples.map((s) => sampleChunks(s.data)) };
 }
 
 /**
@@ -62,6 +69,8 @@ export function optimizeStream(stream: RegisterStream): RegisterStream {
   const frames = stream.frames.map((writes, f) => {
     if (f === stream.loopFrame) last.clear();
     return writes.filter(([a, v]) => {
+      // Sample playback rewrites the wave channel's period behind the stream's back.
+      if (a === SAMPLE_START) last.delete(NR33);
       if (!LATCH_REGISTERS.has(a)) return true;
       if (last.get(a) === v) return false;
       last.set(a, v);
@@ -76,9 +85,14 @@ export const CMD_WAIT = 0x80; // 0x81..0xFF minus END: wait n frames
 export const CMD_END = 0xff; // jump to the loop point
 export const MAX_WAIT = 0x7e;
 
+export const CMD_SAMPLE = 0x30; // nn: start sample nn
+export const CMD_SAMPLE_STOP = 0x31;
+
 /**
  * Encode a stream into the compact driver format:
  *   0x00-0x2F vv  write vv to register 0xFF10 + cmd
+ *   0x30 nn       start sample nn (streamed by the driver's timer interrupt)
+ *   0x31          stop the sample
  *   0x81-0xFE     wait (cmd & 0x7F) frames
  *   0xFF          continue at the loop offset
  */
@@ -99,7 +113,11 @@ export function encodeStream(stream: RegisterStream): { data: Uint8Array; loopOf
       loopOffset = bytes.length;
     }
     if (writes.length) flush();
-    for (const [a, v] of writes) bytes.push(a - 0x10, v);
+    for (const [a, v] of writes) {
+      if (a === SAMPLE_START) bytes.push(CMD_SAMPLE, v);
+      else if (a === SAMPLE_STOP) bytes.push(CMD_SAMPLE_STOP);
+      else bytes.push(a - 0x10, v);
+    }
     wait++;
   });
   flush();
@@ -109,7 +127,8 @@ export function encodeStream(stream: RegisterStream): { data: Uint8Array; loopOf
 
 /**
  * Reference implementation of the C driver (`gbtr_update`), used to verify
- * the encoding. Call `update` once per frame.
+ * the encoding. Call `update` once per frame. Sample commands come out as
+ * SAMPLE_START / SAMPLE_STOP writes; pass a SampleBus to stream them.
  */
 export class StreamPlayer {
   private pos = 0;
@@ -129,6 +148,10 @@ export class StreamPlayer {
       const cmd = this.data[this.pos++];
       if (cmd < 0x30) {
         out.write(0x10 + cmd, this.data[this.pos++]);
+      } else if (cmd === CMD_SAMPLE) {
+        out.write(SAMPLE_START, this.data[this.pos++]);
+      } else if (cmd === CMD_SAMPLE_STOP) {
+        out.write(SAMPLE_STOP, 0);
       } else if (cmd === CMD_END) {
         this.pos = this.loopOffset;
       } else {

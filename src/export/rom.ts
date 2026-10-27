@@ -8,9 +8,10 @@
  * may span many 16 KiB banks; the driver switches banks by writing to 0x2000,
  * which is the bank register of MBC1/MBC5 cartridges and of GBS players.
  */
-import { Song } from '../tracker/song';
+import { SAMPLE_PERIOD, SAMPLE_TAC, SAMPLE_TMA, sampleChunks } from '../tracker/sample';
+import { CYCLES_PER_TICK, Song } from '../tracker/song';
 import { FONT_FIRST, fontText, fontTiles } from './font';
-import { captureStream, encodeStream, optimizeStream } from './stream';
+import { CMD_SAMPLE, CMD_SAMPLE_STOP, captureStream, encodeStream, optimizeStream } from './stream';
 
 export const LOAD_ADDRESS = 0x0400;
 export const DATA_START = 0x4000;
@@ -25,6 +26,16 @@ const VAR_PTR = 0xc002; // little endian
 const VAR_FRAMES = 0xc004;
 const VAR_SECS = 0xc005; // BCD
 const VAR_MINS = 0xc006; // BCD
+// Sample streaming.
+const VAR_SON = 0xc007; // a sample is playing
+const VAR_SBANK = 0xc008; // bank of the next chunk
+const VAR_SPTR = 0xc009; // address of the next chunk, little endian
+const VAR_SLEFT = 0xc00b; // chunks left, little endian
+const VAR_ACC = 0xc00d; // GBS: clocks / 16 towards the next frame, little endian
+
+/** GBS with samples: play runs from the timer at 256 Hz, frames every 70224 clocks on average. */
+const ACC_STEP = 16384 / 16;
+const ACC_FRAME = CYCLES_PER_TICK / 16;
 
 /** The Nintendo logo every cartridge header must contain (0x104-0x133). */
 export const NINTENDO_LOGO = Uint8Array.from([
@@ -116,9 +127,20 @@ function location(offset: number): { bank: number; addr: number } {
   return { bank: 1 + Math.floor(offset / BANK_SIZE), addr: DATA_START + (offset % BANK_SIZE) };
 }
 
-/** init (A ignored) and play, mirroring StreamPlayer / gbtr_update. */
-function driver(a: Asm, loopOffset: number) {
+interface DriverOptions {
+  /** Sample table (bank, address, chunk count per sample); omitted for songs without samples. */
+  samples?: { bank: number; addr: number; chunks: number }[];
+  /** Mask interrupts while a sample starts (the ROM's timer interrupt). */
+  ime?: boolean;
+}
+
+/**
+ * init (A ignored) and play, mirroring StreamPlayer / gbtr_update, plus the
+ * sample streaming of SampleVoice: `stick` is the timer interrupt's work.
+ */
+function driver(a: Asm, loopOffset: number, opts: DriverOptions = {}) {
   const loop = location(loopOffset);
+  const samples = opts.samples;
 
   a.label('init');
   a.db(0xaf); // xor a
@@ -126,6 +148,7 @@ function driver(a: Asm, loopOffset: number) {
   a.op16(LD_NN_A, VAR_FRAMES);
   a.op16(LD_NN_A, VAR_SECS);
   a.op16(LD_NN_A, VAR_MINS);
+  a.op16(LD_NN_A, VAR_SON);
   a.op16(LD_NN_A, VAR_PTR); // DATA_START low byte = 0
   a.db(0x3e, DATA_START >> 8); // ld a,0x40
   a.op16(LD_NN_A, VAR_PTR + 1);
@@ -160,12 +183,24 @@ function driver(a: Asm, loopOffset: number) {
   a.jr(JR, 'play.next');
   a.label('play.cmd');
   a.db(0xfe, 0xff); // cp 0xFF
-  a.jr(JR_NZ, 'play.wait');
+  a.jr(JR_NZ, 'play.notend');
   a.op16(LD_HL_NN, loop.addr);
   a.db(0x3e, loop.bank); // ld a,bank
   a.op16(LD_NN_A, VAR_BANK);
   a.op16(LD_NN_A, 0x2000);
   a.jr(JR, 'play.next');
+  a.label('play.notend');
+  if (samples) {
+    a.db(0xfe, CMD_SAMPLE); // cp 0x30
+    a.jr(JR_Z, 'play.sample');
+    a.db(0xfe, CMD_SAMPLE_STOP); // cp 0x31
+    a.jr(JR_NZ, 'play.wait');
+    a.db(0xaf); // xor a
+    a.op16(LD_NN_A, VAR_SON);
+    a.jr(JR, 'play.next');
+  } else {
+    a.jr(JR, 'play.wait');
+  }
   a.label('play.wait');
   a.db(0xe6, 0x7f); // and 0x7F
   a.db(0x3d); // dec a
@@ -175,6 +210,8 @@ function driver(a: Asm, loopOffset: number) {
   a.db(0x7c); // ld a,h
   a.op16(LD_NN_A, VAR_PTR + 1);
   a.db(RET);
+
+  if (samples) sampleCode(a, samples, !!opts.ime);
 
   // After ld a,[hl+]: if HL reached 0x8000, continue at 0x4000 of the next bank. Keeps A.
   a.label('wrap');
@@ -190,6 +227,113 @@ function driver(a: Asm, loopOffset: number) {
   a.db(RET);
 }
 
+/** Sample start (0x30 nn), the per-reload routine `stick` and the sample table. */
+function sampleCode(a: Asm, samples: { bank: number; addr: number; chunks: number }[], ime: boolean) {
+  a.label('play.sample');
+  a.db(0x2a); // ld a,[hl+]
+  a.abs(CALL, 'wrap');
+  a.db(0xe5); // push hl
+  a.db(0x6f, 0x26, 0x00, 0x54, 0x5d); // ld l,a; ld h,0; ld d,h; ld e,l
+  a.db(0x29, 0x29, 0x19); // add hl,hl; add hl,hl; add hl,de (x5)
+  a.abs(LD_DE_NN, 'samples');
+  a.db(0x19); // add hl,de
+  if (ime) a.db(0xf3); // di
+  a.db(0x2a);
+  a.op16(LD_NN_A, VAR_SBANK);
+  a.db(0x2a);
+  a.op16(LD_NN_A, VAR_SPTR);
+  a.db(0x2a);
+  a.op16(LD_NN_A, VAR_SPTR + 1);
+  a.db(0x2a);
+  a.op16(LD_NN_A, VAR_SLEFT);
+  a.db(0x7e); // ld a,[hl]
+  a.op16(LD_NN_A, VAR_SLEFT + 1);
+  a.db(0x3e, 1);
+  a.op16(LD_NN_A, VAR_SON);
+  if (ime) {
+    // Restart the timer period and drop a pending timer interrupt.
+    a.db(0x3e, SAMPLE_TMA, 0xe0, 0x05); // ld a,TMA; ldh [TIMA],a
+    a.db(0xf0, 0x0f, 0xe6, 0xfb, 0xe0, 0x0f); // ldh a,[IF]; and ~4; ldh [IF],a
+  }
+  a.abs(CALL, 'stick');
+  a.op16(LD_A_NN, VAR_BANK); // back to the stream's bank
+  a.op16(LD_NN_A, 0x2000);
+  if (ime) a.db(0xfb); // ei
+  a.db(0xe1); // pop hl
+  a.abs(JP, 'play.next');
+
+  // One timer tick: load the next chunk into wave RAM and restart CH3, or end the sample.
+  a.label('stick');
+  a.op16(LD_A_NN, VAR_SON);
+  a.db(0xb7, 0xc8); // or a; ret z
+  a.op16(LD_HL_NN, VAR_SLEFT);
+  a.db(0x2a, 0xb6); // ld a,[hl+]; or [hl]
+  a.jr(JR_NZ, 'stick.load');
+  a.db(0xaf); // xor a
+  a.op16(LD_NN_A, VAR_SON);
+  a.db(0xe0, 0x1a); // ldh [NR30],a: DAC off
+  a.db(RET);
+  a.label('stick.load');
+  a.op16(LD_HL_NN, VAR_SLEFT);
+  a.db(0x7e, 0xd6, 0x01, 0x22); // ld a,[hl]; sub 1; ld [hl+],a
+  a.db(0x7e, 0xde, 0x00, 0x77); // ld a,[hl]; sbc 0; ld [hl],a
+  a.op16(LD_A_NN, VAR_SBANK);
+  a.op16(LD_NN_A, 0x2000);
+  a.op16(LD_A_NN, VAR_SPTR);
+  a.db(0x6f); // ld l,a
+  a.op16(LD_A_NN, VAR_SPTR + 1);
+  a.db(0x67); // ld h,a
+  a.db(0xaf, 0xe0, 0x1a); // xor a; ldh [NR30],a: channel off, wave RAM writable
+  a.db(0x0e, 0x30); // ld c,0x30
+  a.label('stick.copy');
+  a.db(0x2a, 0xe2, 0x0c, 0x79, 0xfe, 0x40); // ld a,[hl+]; ldh [c],a; inc c; ld a,c; cp 0x40
+  a.jr(JR_NZ, 'stick.copy');
+  a.db(0x3e, 0x80, 0xe0, 0x1a); // ld a,0x80; ldh [NR30],a
+  a.db(0x3e, SAMPLE_PERIOD & 0xff, 0xe0, 0x1d); // ldh [NR33],a
+  a.db(0x3e, 0x80 | (SAMPLE_PERIOD >> 8), 0xe0, 0x1e); // ldh [NR34],a: trigger
+  a.db(0xcb, 0x7c); // bit 7,h
+  a.jr(JR_Z, 'stick.store');
+  a.db(0x26, DATA_START >> 8); // ld h,0x40
+  a.op16(LD_A_NN, VAR_SBANK);
+  a.db(0x3c); // inc a
+  a.op16(LD_NN_A, VAR_SBANK);
+  a.label('stick.store');
+  a.db(0x7d); // ld a,l
+  a.op16(LD_NN_A, VAR_SPTR);
+  a.db(0x7c); // ld a,h
+  a.op16(LD_NN_A, VAR_SPTR + 1);
+  a.db(RET);
+
+  a.label('samples');
+  for (const s of samples) a.db(s.bank, s.addr & 0xff, s.addr >> 8, s.chunks & 0xff, s.chunks >> 8);
+}
+
+/** GBS play with samples, called by the player's timer at 256 Hz. */
+function gbsTimerPlay(a: Asm) {
+  a.label('tplay');
+  a.abs(CALL, 'stick');
+  a.op16(LD_HL_NN, VAR_ACC + 1);
+  a.db(0x7e, 0xc6, ACC_STEP >> 8, 0x77); // ld a,[hl]; add a,4; ld [hl],a (ACC_STEP is 0x400)
+  a.op16(LD_A_NN, VAR_ACC);
+  a.db(0xd6, ACC_FRAME & 0xff, 0x5f); // sub lo; ld e,a
+  a.op16(LD_A_NN, VAR_ACC + 1);
+  a.db(0xde, ACC_FRAME >> 8); // sbc hi
+  a.db(0xd8); // ret c: no frame yet
+  a.op16(LD_NN_A, VAR_ACC + 1);
+  a.db(0x7b); // ld a,e
+  a.op16(LD_NN_A, VAR_ACC);
+  a.abs(JP, 'play');
+
+  a.label('tinit');
+  a.abs(CALL, 'init');
+  // The first call plays the first frame.
+  a.db(0x3e, (ACC_FRAME - ACC_STEP) & 0xff);
+  a.op16(LD_NN_A, VAR_ACC);
+  a.db(0x3e, (ACC_FRAME - ACC_STEP) >> 8);
+  a.op16(LD_NN_A, VAR_ACC + 1);
+  a.db(RET);
+}
+
 export interface EncodedSong {
   data: Uint8Array;
   loopOffset: number;
@@ -199,7 +343,33 @@ export function encodeSong(song: Song): EncodedSong {
   return encodeStream(optimizeStream(captureStream(song)));
 }
 
-function checkSize({ data }: EncodedSong) {
+interface Layout {
+  /** Stream data followed by the samples' wave RAM chunks. */
+  data: Uint8Array;
+  samples?: { bank: number; addr: number; chunks: number }[];
+}
+
+/** Place the samples after the stream, 16-byte aligned so no chunk crosses a bank. */
+function layout({ data }: EncodedSong, song: Song): Layout {
+  if (!song.samples.length) return { data };
+  let offset = Math.ceil(data.length / 16) * 16;
+  const chunks = song.samples.map((s) => sampleChunks(s.data));
+  const samples = chunks.map((c) => {
+    const at = { ...location(offset), chunks: c.length / 16 };
+    offset += c.length;
+    return at;
+  });
+  const out = new Uint8Array(offset);
+  out.set(data);
+  offset = Math.ceil(data.length / 16) * 16;
+  for (const c of chunks) {
+    out.set(c, offset);
+    offset += c.length;
+  }
+  return { data: out, samples };
+}
+
+function checkSize({ data }: { data: Uint8Array }) {
   if (1 + Math.ceil(data.length / BANK_SIZE) > MAX_BANKS - 1) throw new Error('Song too long for a Game Boy ROM.');
 }
 
@@ -228,28 +398,32 @@ export interface GbsInfo {
 
 /** GBS v1 file. Timer control 0: play is called on every VBlank (59.73 Hz). */
 export function buildGbs(song: Song, encoded = encodeSong(song)): { data: Uint8Array; info: GbsInfo } {
-  checkSize(encoded);
-  const { data, loopOffset } = encoded;
+  const { data, samples } = layout(encoded, song);
+  checkSize({ data });
   const a = new Asm(LOAD_ADDRESS);
-  driver(a, loopOffset);
+  driver(a, encoded.loopOffset, { samples });
+  if (samples) gbsTimerPlay(a);
+  const init = a.addr(samples ? 'tinit' : 'init');
+  const play = a.addr(samples ? 'tplay' : 'play');
   const code = a.link();
   const flat = image(code, data, DATA_START);
   const header = new Uint8Array(0x70);
   const v = new DataView(header.buffer);
   header.set([0x47, 0x42, 0x53, 1, 1, 1]); // "GBS", version 1, 1 song, first song 1
   v.setUint16(0x06, LOAD_ADDRESS, true);
-  v.setUint16(0x08, a.addr('init'), true);
-  v.setUint16(0x0a, a.addr('play'), true);
+  v.setUint16(0x08, init, true);
+  v.setUint16(0x0a, play, true);
   v.setUint16(0x0c, 0xfffe, true);
-  header[0x0e] = 0; // timer modulo
-  header[0x0f] = 0; // timer control: VBlank
+  // Without samples play runs on VBlank; with samples from the timer at 256 Hz.
+  header[0x0e] = samples ? SAMPLE_TMA : 0;
+  header[0x0f] = samples ? SAMPLE_TAC : 0;
   header.set(ascii(song.title, 32), 0x10);
   header.set(ascii(song.author, 32), 0x30);
   header.set(ascii(`${new Date().getFullYear()} ${song.author}`.trim(), 32), 0x50);
   const out = new Uint8Array(0x70 + flat.length - LOAD_ADDRESS);
   out.set(header);
   out.set(flat.subarray(LOAD_ADDRESS), 0x70);
-  return { data: out, info: { init: a.addr('init'), play: a.addr('play') } };
+  return { data: out, info: { init, play } };
 }
 
 // Screen layout (tile coordinates, 20x18 visible).
@@ -284,10 +458,20 @@ export function romExtension(song: Song) {
 
 /** Playable cartridge image (MBC5 when the song needs more than one data bank). */
 export function buildRom(song: Song, encoded = encodeSong(song)): { data: Uint8Array; banks: number; play: number } {
-  checkSize(encoded);
-  const { data, loopOffset } = encoded;
+  const { data, samples } = layout(encoded, song);
+  checkSize({ data });
   const a = new Asm(LOAD_ADDRESS);
-  driver(a, loopOffset);
+  driver(a, encoded.loopOffset, { samples, ime: true });
+  if (samples) {
+    // Timer interrupt: stream the sample, then give the stream its bank back.
+    a.label('isr');
+    a.db(0xf5, 0xc5, 0xd5, 0xe5); // push af, bc, de, hl
+    a.abs(CALL, 'stick');
+    a.op16(LD_A_NN, VAR_BANK);
+    a.op16(LD_NN_A, 0x2000);
+    a.db(0xe1, 0xd1, 0xc1, 0xf1); // pop hl, de, bc, af
+    a.db(0xd9); // reti
+  }
 
   a.label('main');
   a.db(0xf3); // di
@@ -329,6 +513,13 @@ export function buildRom(song: Song, encoded = encodeSong(song)): { data: Uint8A
   a.db(0x3e, 0x91); // ld a,0x91: LCD on, BG tiles at 0x8000, BG on
   a.db(0xe0, 0x40); // ldh [LCDC],a
   a.abs(CALL, 'init');
+  if (samples) {
+    a.db(0x3e, SAMPLE_TMA, 0xe0, 0x06); // ldh [TMA],a
+    a.db(0x3e, SAMPLE_TAC, 0xe0, 0x07); // ldh [TAC],a: 16384 Hz / 64 = 256 Hz
+    a.db(0x3e, 0x04, 0xe0, 0xff); // ldh [IE],a: timer only
+    a.db(0xaf, 0xe0, 0x0f); // xor a; ldh [IF],a
+    a.db(0xfb); // ei
+  }
   a.label('main.frame');
   a.db(0xf0, 0x44); // ldh a,[LY]
   a.db(0xfe, 144); // cp 144
@@ -396,8 +587,9 @@ export function buildRom(song: Song, encoded = encodeSong(song)): { data: Uint8A
   const banks = Math.max(2, 1 << Math.ceil(Math.log2(1 + Math.ceil(data.length / BANK_SIZE))));
   const rom = image(code, data, banks * BANK_SIZE);
 
-  // Entry point and header.
+  // Entry point, timer interrupt vector and header.
   rom.set([0x00, JP, a.addr('main') & 0xff, a.addr('main') >> 8], 0x100);
+  if (samples) rom.set([JP, a.addr('isr') & 0xff, a.addr('isr') >> 8], 0x50);
   rom.set(NINTENDO_LOGO, 0x104);
   rom.set(ascii(song.title.toUpperCase(), 11), 0x134);
   rom[0x143] = song.model === 'cgb' ? 0x80 : 0x00;

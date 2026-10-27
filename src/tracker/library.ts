@@ -179,12 +179,14 @@ export class SongLibrary {
   }
 }
 
-/** Takes the instruments and waveforms of `source` into `target`, leaving its notes alone. */
+/** Takes the instruments, waveforms and samples of `source` into `target`, leaving its notes alone. */
 export function copySounds(target: Song, source: Song) {
   target.pulseInstruments = structuredClone(source.pulseInstruments);
   target.waveInstruments = structuredClone(source.waveInstruments);
   target.noiseInstruments = structuredClone(source.noiseInstruments);
   target.waves = structuredClone(source.waves);
+  // Wave instruments refer to samples by index, so they travel together.
+  target.samples = structuredClone(source.samples);
 }
 
 /** A file name without characters that file systems reject. */

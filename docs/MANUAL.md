@@ -20,6 +20,7 @@ sounds right in the tracker sounds the same on hardware, in the exported ROM and
 - [Song structure: order list and patterns](#song-structure-order-list-and-patterns)
 - [Instruments](#instruments)
 - [Waveforms](#waveforms)
+- [Samples](#samples)
 - [Effects](#effects)
 - [Speed and tempo](#speed-and-tempo)
 - [DMG and Game Boy Color mode](#dmg-and-game-boy-color-mode)
@@ -319,6 +320,7 @@ range silence the channel, exactly as on hardware.
 
 | Setting | Range | Hardware | Effect on the sound |
 | --- | --- | --- | --- |
+| Sample | —, 0–F | wave RAM, timer | Play a [sample](#samples) (drums, voices) instead of the waveform. — = play the waveform. |
 | Waveform | 0–F | wave RAM | Which of the 16 waveforms ([WAVE tab](#waveforms)) to play. |
 | Volume | Mute, 100 %, 50 %, 25 % | NR32 | The wave channel has only these four levels. |
 | Length | 0–256 | NR31, NR34 bit 6 | Note stops after *length* × 1/256 s. 0 = off. |
@@ -360,6 +362,40 @@ A changed waveform is used from the next note on. To load a new wave the tracker
 channel's DAC off, as hardware drivers do; this avoids the DMG wave RAM corruption bug.
 
 Effect [9xx](#effects) switches the waveform during a note on the wave channel.
+
+## Samples
+
+Real samples, such as drums, voices or any short recording, play on the wave channel the way LSDJ kits do it.
+The wave channel only holds 32 nibbles at a time, so the driver keeps refilling wave RAM with the next part of
+the sample from a timer interrupt, 256 times a second.
+
+**Import:** in the **WAVE** tab, press **Import sample…** under SAMPLES and pick an audio file (WAV, or anything
+your browser can play). It is mixed to mono, silence at the start and end is cut off, the level is normalised
+and it is converted to 4 bits at 7936 Hz. A song holds up to 16 samples (0–F) of up to 4 seconds each. In the
+list you can rename a sample, listen to it (▶) or delete it (✕).
+
+**Play:** choose the sample in a wave instrument (**INSTR** tab, WAVE, *Sample*). Every note of that instrument
+starts the sample from the beginning; it plays once and stops at its end, at a note off or note cut (`E00`), or
+when another note starts on CH3.
+
+- **Fixed pitch:** a sample always plays at its own speed. The note only says *when* it starts, so any note
+  works (`C-5` is a good habit). Arpeggio, slides, portamento, vibrato and `9xx` have no effect on samples.
+- **Volume:** the instrument's volume and the volume column work as for waveforms (mute, 100 %, 50 %, 25 %).
+  The length setting does not apply.
+- **Sound:** 4 bits and 7936 Hz give the gritty sound of Game Boy drum kits. Short, loud, punchy sounds work
+  best; normalise and compress them before importing if they sound too quiet.
+
+**How it works on the hardware:** the wave channel plays at period 1792, one nibble every 512 clocks (8192 Hz),
+so its 32 positions take exactly 16384 clocks. The timer (16384 Hz clock, TMA `0xC0`) interrupts every 16384
+clocks. Each time the driver switches the DAC off (NR30 = `0x00`), which disables the channel so wave RAM can be
+written without the DMG corruption bug, writes the next 16 bytes, switches the DAC on and restarts the channel
+(NR33 = `0x00`, NR34 = `0x87`). After a restart the channel first plays the old sample buffer, then positions 1
+to 31; position 0 is never reached before the next refill. So each refill carries 31 new nibbles: 31 × 256 =
+7936 samples per second. The DAC is off for a few microseconds per refill on real hardware, a faint 256 Hz
+buzz that is part of the LSDJ-style sample sound.
+
+Samples are in every export: WAV and VGM (each refill at its exact clock), the Game Boy ROM, GBS and GBDK
+exports (with the timer interrupt driver), and XM and MOD (as one-shot samples at 7936 Hz).
 
 ## Effects
 
@@ -493,7 +529,7 @@ next to each song:
 | --- | --- |
 | ✎ | Rename the song (asks for the new title). |
 | ⧉ | Duplicate it; the copy is called "… (copy)". |
-| ♫ | Use its instruments and waveforms in the song you are editing; the notes stay as they are. Handy for a set of songs that share one sound. |
+| ♫ | Use its instruments, waveforms and samples in the song you are editing; the notes stay as they are. Handy for a set of songs that share one sound. |
 | ✕ | Delete it from the library (asks first; this cannot be undone). |
 
 Song files are plain JSON and contain everything: patterns, order, instruments, waveforms, title, author, model
@@ -524,10 +560,16 @@ The ROM plays the song in an endless loop and shows the title, author, model and
 original hardware with a flash cartridge and in Game Boy emulators.
 Songs that do not fit into a 32 KiB ROM are stored over several banks of an MBC5 cartridge (up to about 4 MiB).
 
+Songs with [samples](#samples) also use the timer interrupt (`0x50`) to stream them into wave RAM.
+
 ### GBS
 
 GBS files contain the same player as the ROM and are called once per frame (VBlank timing). They play in GBS
 players and in many multi-format music players.
+
+Songs with [samples](#samples) run from the timer instead: the GBS player calls the driver 256 times a second,
+it refills wave RAM each time and plays a frame whenever 70224 clocks (one VBlank) have added up. Frames then
+start on that 256 Hz grid, up to 4 ms off the exact VBlank time; the average tempo is exact.
 
 ### XM and MOD
 
@@ -537,6 +579,8 @@ tracker's pitch (the tests check this against libopenmpt, the engine of OpenMPT)
 - **Instruments become samples:** a pulse instrument is one period of its duty cycle, a wave instrument one
   period of its waveform, a noise instrument the noise channel's random sequence (15 or 7 bit). Only the
   instruments the song uses are exported, named `P1`, `W3`, `N2` … after their channel type and number.
+  A wave instrument that plays a [sample](#samples) becomes that sample, one-shot and tuned so that its notes
+  (all written as `C-5`) play at 7936 Hz, like in the tracker.
 - **Envelopes:** XM gets a volume envelope that follows the hardware envelope and the length counter. MOD
   has no envelopes, so a fading or length-limited instrument is rendered into its sample (exact at the note the
   instrument plays most).
@@ -561,7 +605,7 @@ The **GBDK project (.zip)** export contains a ready-to-build project for
 | File | Content |
 | --- | --- |
 | `gbtr_player.c`, `gbtr_player.h` | The player, about 40 lines of C. |
-| `<name>.c`, `<name>.h` | The song as `const uint8_t <name>_data[]` and its loop offset `<name>_loop`. |
+| `<name>.c`, `<name>.h` | The song as `const uint8_t <name>_data[]` and its loop offset `<name>_loop`; with samples also `<name>_samples[]` and `<name>_sample_chunks[]`. |
 | `main.c` | Example program that prints the title and plays the song. |
 | `Makefile` | Builds `<name>.gb` with GBDK's `lcc`. |
 | `README.md` | Short instructions. |
@@ -599,6 +643,14 @@ This produces `my_song.gb` (marked Color compatible for GBC songs).
    }
    ```
 
+   If the song uses [samples](#samples), register them once before `gbtr_play()`:
+
+   ```c
+   gbtr_set_samples(my_song_samples, my_song_sample_chunks);
+   ```
+
+   This installs a timer interrupt handler (`add_TIM`) and sets TMA/TAC to 256 Hz, so your game cannot use the
+   timer for something else at the same time. The exported `main.c` already does this.
 3. Call `gbtr_update()` exactly once per frame. Instead of calling it in your main loop you can also run it from
    the VBlank interrupt with `add_VBL(gbtr_update);` so the music keeps time while your game is busy.
 4. `gbtr_stop()` stops the music and silences the APU. To switch songs, call `gbtr_play()` with the other song.
@@ -620,6 +672,8 @@ The song is a stream of bytes the player reads once per frame:
 | Byte | Meaning |
 | --- | --- |
 | `0x00`–`0x2F`, then `vv` | Write `vv` to the sound register `0xFF10 + byte` |
+| `0x30`, then `nn` | Start sample `nn` (load its first 16 bytes now, the rest from the timer interrupt) |
+| `0x31` | Stop the sample |
 | `0x81`–`0xFE` | Wait `byte & 0x7F` frames |
 | `0xFF` | Continue at the loop offset |
 

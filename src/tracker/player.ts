@@ -1,5 +1,6 @@
 import { NR10, NR30, NR50, NR51, NR52, WAVE_RAM } from '../apu/apu';
 import { NOISE_NR43, NOTE_COUNT, PULSE_PERIODS, WAVE_PERIODS } from './notes';
+import { SAMPLE_START, SAMPLE_STOP } from './sample';
 import { CHANNEL_KINDS, CHANNEL_COUNT, Cell, EMPTY, NOTE_OFF, Song, packWave } from './song';
 
 /** Anything that accepts APU register writes (the emulator, a logger, ...). */
@@ -40,6 +41,8 @@ interface ChannelState {
   wave: number;
   active: boolean;
   trigger: boolean;
+  /** The pending trigger starts a new note (not just a volume change). */
+  newNote: boolean;
   lastPeriod: number;
   effect: number;
   param: number;
@@ -66,6 +69,7 @@ function initialChannel(): ChannelState {
     wave: 0,
     active: false,
     trigger: false,
+    newNote: false,
     lastPeriod: -1,
     effect: EMPTY,
     param: 0,
@@ -113,6 +117,8 @@ export class Player {
 
   private channels: ChannelState[] = [];
   private loadedWave = -1;
+  /** A sample is playing on the wave channel (the driver streams it). */
+  private sampleOn = false;
   private visited = new Set<number>();
   private jumpOrder = -1;
   private breakRow = -1;
@@ -132,6 +138,7 @@ export class Player {
   private reset() {
     this.channels = Array.from({ length: CHANNEL_COUNT }, initialChannel);
     this.loadedWave = -1;
+    this.sampleOn = false;
     this.visited.clear();
     this.loops = 0;
     this.jumpOrder = -1;
@@ -246,6 +253,7 @@ export class Player {
         st.note = cell.note;
         st.period = period;
         st.trigger = true;
+        st.newNote = true;
         st.vibPhase = 0;
         st.portaTarget = -1;
       }
@@ -278,9 +286,12 @@ export class Player {
         if (kind === 'pulse') {
           st.duty = p & 3;
           if (st.active) out.write(NRX1[ch], (st.duty << 6) | this.lengthBits(ch));
-        } else if (kind === 'wave') {
+        } else if (kind === 'wave' && this.sampleIndex(st.instrument) < 0) {
           st.wave = p & 15;
-          if (st.active) st.trigger = true;
+          if (st.active) {
+            st.trigger = true;
+            st.newNote = true;
+          }
         }
         break;
       case FX.POSITION_JUMP:
@@ -340,9 +351,24 @@ export class Player {
     return len ? (ch === 2 ? 256 : 64) - len : 0;
   }
 
+  /** The sample a wave instrument plays, or -1 for its waveform. */
+  private sampleIndex(instrument: number): number {
+    const i = this.song.waveInstruments[instrument]?.sample ?? -1;
+    return i >= 0 && i < this.song.samples.length ? i : -1;
+  }
+
+  private stopSample(out: RegisterWriter) {
+    if (!this.sampleOn) return;
+    out.write(SAMPLE_STOP, 0);
+    this.sampleOn = false;
+  }
+
   private silence(out: RegisterWriter, ch: number) {
     const st = this.channels[ch];
-    if (ch === 2) out.write(NR30, 0);
+    if (ch === 2) {
+      this.stopSample(out);
+      out.write(NR30, 0);
+    }
     else out.write(NRX1[ch] + 1, 0); // NRx2 = 0 turns the DAC off
     st.active = false;
     st.trigger = false;
@@ -392,10 +418,11 @@ export class Player {
     }
 
     if (st.trigger) {
-      this.triggerChannel(out, ch, period);
+      this.triggerChannel(out, ch, period, st.newNote);
       st.trigger = false;
+      st.newNote = false;
       st.active = true;
-    } else if (period !== st.lastPeriod) {
+    } else if (period !== st.lastPeriod && !(kind === 'wave' && this.sampleOn)) {
       this.writePeriod(out, ch, period, false);
     }
   }
@@ -416,10 +443,25 @@ export class Player {
     out.write(base + 3, t | lenEnable | ((period >> 8) & 7));
   }
 
-  private triggerChannel(out: RegisterWriter, ch: number, period: number) {
+  private triggerChannel(out: RegisterWriter, ch: number, period: number, newNote = true) {
     const st = this.channels[ch];
     const kind = CHANNEL_KINDS[ch];
+    const sample = kind === 'wave' ? this.sampleIndex(st.instrument) : -1;
+    if (sample >= 0) {
+      // Samples play at a fixed rate; the driver's timer streams them, so
+      // pitch effects do not apply and a volume change only rewrites NR32.
+      if (!newNote && !this.sampleOn) return;
+      out.write(0x1c, waveVolumeCode(st.volume) << 5);
+      if (newNote) {
+        out.write(SAMPLE_START, sample);
+        this.sampleOn = true;
+        this.loadedWave = -1; // the sample overwrites wave RAM
+      }
+      st.lastPeriod = period;
+      return;
+    }
     if (kind === 'wave') {
+      this.stopSample(out);
       // Turning the DAC off first disables the channel, so loading wave RAM
       // and retriggering never hit the DMG wave RAM corruption bug.
       out.write(NR30, 0);
@@ -454,13 +496,18 @@ export class Player {
     this.loadInstrument(ch, instrument);
     st.note = note;
     st.period = periodForNote(ch, note);
-    this.triggerChannel(out, ch, st.period);
+    this.triggerChannel(out, ch, st.period, true);
     st.active = true;
   }
 
   /** Stop a previewed note. */
   release(out: RegisterWriter, ch: number) {
     this.silence(out, ch);
+  }
+
+  /** Wave RAM was changed behind the player's back: reload it on the next wave note. */
+  forgetWave() {
+    this.loadedWave = -1;
   }
 
   /** The song was edited: keep the position but drop cached state. */

@@ -85,14 +85,16 @@ describe('song library', () => {
     expect((await lib.load(id))?.speed).toBe(31);
   });
 
-  it('copies instruments and waveforms but not the notes', () => {
+  it('copies instruments, waveforms and samples but not the notes', () => {
     const target = song('T');
     target.patterns[0].rows[0][0].note = 12;
     const source = song('S');
     source.pulseInstruments[3].duty = 0;
     source.noiseInstruments[0].narrow = true;
     source.waves[5] = Array(32).fill(7);
+    source.samples = [{ name: 'kick', data: 'F0F0' }];
     copySounds(target, source);
+    expect(target.samples.map((x) => x.name)).toEqual(['kick']);
     expect(target.pulseInstruments[3].duty).toBe(0);
     expect(target.noiseInstruments[0].narrow).toBe(true);
     expect(target.waves[5]).toEqual(Array(32).fill(7));

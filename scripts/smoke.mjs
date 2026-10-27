@@ -376,6 +376,53 @@ await check('every export hands over a valid file', async () => {
   }
 });
 
+/** A mono 16-bit WAV file of `seconds` of `fn(t)` (t in seconds). */
+function wavFile(name, seconds, fn, rate = 22050) {
+  const n = Math.round(seconds * rate);
+  const b = Buffer.alloc(44 + n * 2);
+  b.write('RIFF', 0, 'latin1');
+  b.writeUInt32LE(36 + n * 2, 4);
+  b.write('WAVEfmt ', 8, 'latin1');
+  b.writeUInt32LE(16, 16);
+  b.writeUInt16LE(1, 20);
+  b.writeUInt16LE(1, 22);
+  b.writeUInt32LE(rate, 24);
+  b.writeUInt32LE(rate * 2, 28);
+  b.writeUInt16LE(2, 32);
+  b.writeUInt16LE(16, 34);
+  b.write('data', 36, 'latin1');
+  b.writeUInt32LE(n * 2, 40);
+  for (let i = 0; i < n; i++) b.writeInt16LE(Math.round(20000 * fn(i / rate)), 44 + i * 2);
+  return { name, mimeType: 'audio/wav', buffer: b };
+}
+
+await check('audio imports as a waveform and as a sample that goes into the exports', async () => {
+  const { context, page, errors } = await open(desktop);
+  try {
+    await page.locator('.tabs [data-tab="wave"]').click();
+    const hexBefore = await page.inputValue('#w-hex');
+    await page.setInputFiles('#w-file', wavFile('organ.wav', 0.5, (t) => Math.sin(2 * Math.PI * 220 * t) + 0.5 * Math.sin(2 * Math.PI * 660 * t)));
+    await page.waitForFunction((before) => document.querySelector('#w-hex')?.value !== before, hexBefore);
+    await page.setInputFiles('#s-file', wavFile('kick.wav', 0.3, (t) => Math.exp(-t * 15) * Math.sin(2 * Math.PI * (60 + 200 * Math.exp(-t * 40)) * t)));
+    await page.waitForSelector('[data-splay="0"]');
+    await page.locator('[data-splay="0"]').click();
+    await page.locator('.tabs [data-tab="inst"]').click();
+    await page.locator('[data-kind="wave"]').click();
+    await page.selectOption('#i-sample', '0');
+    const song = JSON.parse(await storedSong(page));
+    assert(song.samples?.length === 1 && song.samples[0].name === 'kick', `samples: ${JSON.stringify(song.samples?.map((x) => x.name))}`);
+    assert(Math.abs(song.samples[0].data.length / 7936 - 0.3) < 0.05, `sample length ${song.samples[0].data.length}`);
+    assert(song.waveInstruments[0].sample === 0, 'the wave instrument does not use the sample');
+    // GBS files of songs with samples run from the timer at 256 Hz.
+    await page.locator('.tabs [data-tab="file"]').click();
+    const gbs = await download(page, 'x-gbs', 120000);
+    assert(gbs.bytes[0x0e] === 0xc0 && gbs.bytes[0x0f] === 0x07, `GBS timer ${gbs.bytes[0x0e]}/${gbs.bytes[0x0f]}`);
+    assert(errors.length === 0, `errors: ${errors.join(' | ')}`);
+  } finally {
+    await context.close();
+  }
+});
+
 await check('theme button cycles auto, light and dark', async () => {
   const { context, page, errors } = await open(desktop);
   try {

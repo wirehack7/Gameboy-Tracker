@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MIDI_NOTE_OFFSET, midiToNote, parseMidi } from '../../src/input/midi';
 import { NOTE_COUNT, noteFrequency, noteName } from '../../src/tracker/notes';
-import { pianoKeys, pianoOctaves } from '../../src/ui/piano';
+import { pianoKeys, pianoOctaves, pianoWhites } from '../../src/ui/piano';
 
 describe('MIDI input', () => {
   it('decodes note on/off on any channel', () => {
@@ -49,10 +49,18 @@ describe('on-screen piano', () => {
     keys.forEach((k, i) => expect(k.note).toBe(keys[0].note + i));
   });
 
-  it('stops at the top of the note range', () => {
+  it('shifts down at the top of the note range instead of shrinking', () => {
     const keys = pianoKeys(8, 2);
+    expect(noteName(keys[0].note)).toBe('C-7');
     expect(keys.at(-1)!.note).toBe(NOTE_COUNT - 1);
     expect(noteName(keys.at(-1)!.note)).toBe('B-8');
+    // Same white keys for every octave, so the keys never change size.
+    for (const octaves of [1, 2, 3, 4])
+      for (let octave = 2; octave <= 8; octave++) {
+        const whites = pianoKeys(octave, octaves).filter((k) => !k.black);
+        expect(whites.length).toBeGreaterThanOrEqual(pianoWhites(octaves) - 1);
+        expect(whites.at(-1)!.white).toBeLessThan(pianoWhites(octaves));
+      }
   });
 
   it('fits more octaves on wider screens', () => {

@@ -11,9 +11,13 @@ export interface PianoKey {
 
 const BLACK = [false, true, false, true, false, false, true, false, true, false, true, false];
 
-/** Keys from the C of `octave` over `octaves` octaves plus the closing C, clipped to the note range. */
+/**
+ * Keys from the C of `octave` over `octaves` octaves plus the closing C. Near
+ * the top of the note range the window shifts down instead of shrinking, so
+ * the keys keep their size whatever the octave.
+ */
 export function pianoKeys(octave: number, octaves: number): PianoKey[] {
-  const first = (octave - 2) * 12;
+  const first = Math.max(0, Math.min((octave - 2) * 12, NOTE_COUNT - octaves * 12));
   const keys: PianoKey[] = [];
   let white = -1;
   for (let note = first; note <= first + octaves * 12 && note < NOTE_COUNT; note++) {
@@ -28,4 +32,9 @@ export function pianoKeys(octave: number, octaves: number): PianoKey[] {
 /** How many octaves fit a given width with white keys at least `minKey` px wide (wider for touch). */
 export function pianoOctaves(width: number, minKey = 26): number {
   return Math.max(1, Math.min(4, Math.floor(width / (7 * minKey))));
+}
+
+/** White key slots of a piano with `octaves` octaves (the closing C included). */
+export function pianoWhites(octaves: number): number {
+  return octaves * 7 + 1;
 }

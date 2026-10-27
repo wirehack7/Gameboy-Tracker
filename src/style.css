@@ -425,6 +425,8 @@ select.pill-btn {
   flex-direction: column;
   gap: 4px;
   min-width: 0;
+  /* The header columns take their width from the pattern grid, never from the title or the scope. */
+  contain: inline-size;
 }
 
 .chan-title {
@@ -432,6 +434,13 @@ select.pill-btn {
   justify-content: space-between;
   align-items: center;
   gap: 4px;
+}
+
+.chan-title > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .chan-title .kind {
@@ -460,6 +469,10 @@ select.pill-btn {
 
 .chan canvas {
   width: 100%;
+  min-width: 0;
+  /* The drawing buffer (width × devicePixelRatio) must not size the column: without this the
+     canvas's intrinsic width widens the grid, which widens the buffer on the next frame, and so on. */
+  contain: size;
   height: clamp(28px, 6vh, 56px);
   display: block;
   background: var(--lcd-bg);

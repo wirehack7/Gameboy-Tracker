@@ -23,6 +23,7 @@
  * - German, Spanish and French browsers get their UI language, still without sideways scrolling;
  * - the manual page loads its sections, contents list and images on desktop and phone;
  * - the scope traces stay centred while playing (Chromium) and the piano keys keep their size at every octave;
+ * - on phones with 3 device pixels per CSS pixel the four scopes sit above their pattern columns and keep their size;
  * - the installed app (PWA): its manifest loads, and after one visit the tracker and the manual open offline (Chromium).
  *
  * Headless Firefox and WebKit on CI have no sound device and their audio clock may never run,
@@ -260,6 +261,46 @@ for (const screen of screens) {
 }
 
 const desktop = screens.find((s) => !s.hasTouch);
+
+await check('scopes sit above their pattern columns on high-density phones', async () => {
+  // Phones draw at 2-3 device pixels per CSS pixel; the scopes' drawing buffers must not widen the header.
+  for (const screen of screens.filter((s) => s.hasTouch)) {
+    const { context, page, errors } = await open({ ...screen, deviceScaleFactor: screen.deviceScaleFactor ?? 3 });
+    try {
+      const layout = () =>
+        page.evaluate(() => {
+          const left = (e) => Math.round(e.getBoundingClientRect().left);
+          const row = document.querySelector('#pattern .prow');
+          return {
+            heads: [...document.querySelectorAll('#chan-head .chan')].map(left),
+            columns: [0, 1, 2, 3].map((ch) => {
+              const field = row.querySelector(`[data-ch="${ch}"]`);
+              return left(field.closest('.cell') ?? field);
+            }),
+            buffers: [...document.querySelectorAll('#chan-head canvas')].map((c) => [c.width, c.clientWidth]),
+            dpr: devicePixelRatio,
+          };
+        });
+      await page.waitForTimeout(300);
+      const first = await layout();
+      await page.waitForTimeout(700);
+      const later = await layout();
+      assert(later.heads.length === 4, `${screen.name}: ${later.heads.length} scopes`);
+      assert(
+        later.heads.every((x, i) => Math.abs(x - later.columns[i]) <= 2),
+        `${screen.name}: scopes at ${later.heads.join(' ')}, columns at ${later.columns.join(' ')}`,
+      );
+      assert(
+        later.buffers.every(([w, css]) => css > 20 && w <= Math.ceil(css * later.dpr) + 1),
+        `${screen.name}: scope buffers ${later.buffers.map((b) => b.join('/')).join(' ')} at ${later.dpr}x`,
+      );
+      assert(JSON.stringify(first) === JSON.stringify(later), `${screen.name}: the header keeps changing size`);
+      assert(errors.length === 0, `errors: ${errors.join(' | ')}`);
+    } finally {
+      await context.close();
+    }
+  }
+});
 
 await check('keyboard note entry is saved and survives a reload', async () => {
   const { context, page, errors } = await open(desktop);

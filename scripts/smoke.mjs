@@ -10,6 +10,7 @@
  *   and on phones the bottom bar switches between the pattern, list and editor views;
  * - typing notes on the computer keyboard and tapping the on-screen piano and keypad change the song,
  *   and the song survives a reload (localStorage);
+ * - undo/redo, block selection (keys and mouse), copy/paste and transpose change the pattern as expected;
  * - the song library saves (button and Ctrl+S), saves as, renames, duplicates, deletes and opens songs,
  *   keeps them across a reload (IndexedDB), and its ZIP backup imports again;
  * - every export (song JSON, WAV, FLAC, stems, VGM, GBS, ROM, XM, MOD, GBDK zip) hands over a file with the right
@@ -277,6 +278,58 @@ await check('keyboard note entry is saved and survives a reload', async () => {
     await page.waitForSelector('#pattern .prow');
     const reloaded = await page.$$eval('#pattern .prow', (rows) => rows.slice(0, 3).map((r) => r.querySelector('.f0')?.textContent));
     assert(reloaded.join() === cells.join(), `after a reload rows 00-02 show ${reloaded.join(', ')}`);
+    assert(errors.length === 0, `errors: ${errors.join(' | ')}`);
+  } finally {
+    await context.close();
+  }
+});
+
+await check('undo/redo, block selection, copy/paste and transpose', async () => {
+  const { context, page, errors } = await open(desktop);
+  try {
+    await page.locator('.tabs [data-tab="file"]').click();
+    await page.locator('#f-new').click();
+    await page.waitForTimeout(100);
+    const col = (ch) =>
+      page.$$eval('#pattern .prow', (rows, c) => rows.slice(0, 4).map((r) => r.querySelector(`[data-ch="${c}"][data-f="0"]`)?.textContent), ch);
+    await page.locator('#pattern .prow[data-row="0"] [data-ch="0"][data-f="0"]').click();
+    for (const k of ['KeyZ', 'KeyX', 'KeyC', 'KeyV']) await page.keyboard.press(k); // C D E F
+    const typed = await col(0);
+    assert(/^C-/.test(typed[0]) && /^F-/.test(typed[3]), `typed ${typed.join(' ')}`);
+    assert(await page.locator('#undo').isEnabled(), 'the undo button is disabled after an edit');
+
+    // Ctrl+Z takes the whole burst of typing back, Ctrl+Y brings it again.
+    await page.keyboard.press('Control+KeyZ');
+    assert((await col(0)).every((t) => t === '···'), `after undo: ${(await col(0)).join(' ')}`);
+    await page.keyboard.press('Control+KeyY');
+    assert((await col(0)).join() === typed.join(), `after redo: ${(await col(0)).join(' ')}`);
+
+    // Select rows 00-03 of channel 1 with Shift+arrows, copy, paste into channel 2.
+    await page.locator('#pattern .prow[data-row="0"] [data-ch="0"][data-f="0"]').click();
+    for (let i = 0; i < 3; i++) await page.keyboard.press('Shift+ArrowDown');
+    assert((await page.locator('#pattern .cell.sel').count()) === 4, 'Shift+Down did not select 4 cells');
+    await page.keyboard.press('Control+KeyC');
+    await page.locator('#pattern .prow[data-row="0"] [data-ch="1"][data-f="0"]').click();
+    assert((await page.locator('#pattern .cell.sel').count()) === 0, 'a click did not clear the selection');
+    await page.keyboard.press('Control+KeyV');
+    assert((await col(1)).join() === typed.join(), `pasted: ${(await col(1)).join(' ')}`);
+
+    // The pasted block stays selected: transpose it up an octave.
+    await page.keyboard.press('Control+Shift+ArrowUp');
+    const up = await col(1);
+    assert(up.every((t, i) => t.slice(0, 2) === typed[i].slice(0, 2) && Number(t[2]) === Number(typed[i][2]) + 1), `transposed: ${up.join(' ')}`);
+    assert((await col(0)).join() === typed.join(), 'transposing changed channel 1 too');
+
+    // Mouse drag selects a block; Delete clears it.
+    const from = await page.locator('#pattern .prow[data-row="0"] [data-ch="0"][data-f="0"]').boundingBox();
+    const to = await page.locator('#pattern .prow[data-row="1"] [data-ch="1"][data-f="0"]').boundingBox();
+    await page.mouse.move(from.x + 4, from.y + 4);
+    await page.mouse.down();
+    await page.mouse.move(to.x + 4, to.y + 4, { steps: 4 });
+    await page.mouse.up();
+    assert((await page.locator('#pattern .cell.sel').count()) === 4, 'dragging did not select 2 × 2 cells');
+    await page.keyboard.press('Delete');
+    assert((await col(0)).slice(0, 2).every((t) => t === '···') && (await col(1))[2] !== '···', 'Delete did not clear just the block');
     assert(errors.length === 0, `errors: ${errors.join(' | ')}`);
   } finally {
     await context.close();

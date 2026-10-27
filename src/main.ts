@@ -19,6 +19,8 @@ import { SongLibrary, SongMeta, copySounds, fileName, openStore, uniqueNames } f
 import { openAbout } from './ui/about';
 import { pianoKeys, pianoOctaves, pianoWhites } from './ui/piano';
 import { scopeTrace } from './ui/scope';
+import { Block, clearBlock, contains, copyBlock, normalize, pasteBlock, transposeBlock } from './tracker/block';
+import { History } from './tracker/history';
 import {
   CHANNEL_KINDS,
   CHANNEL_COUNT,
@@ -141,11 +143,47 @@ function persist(now = false) {
   else saveTimer = window.setTimeout(write, 400);
 }
 
+// Undo history: edits within half a second become one step.
+const history = new History(JSON.stringify(song));
+let historyTimer = 0;
+function commitHistory() {
+  clearTimeout(historyTimer);
+  historyTimer = 0;
+  history.commit(JSON.stringify(song));
+  updateUndoButtons();
+}
+
 function changed(structure = false) {
   audio.setSong(song);
   setDirty(true);
   persist();
+  clearTimeout(historyTimer);
+  historyTimer = window.setTimeout(commitHistory, 500);
+  updateUndoButtons();
   if (structure) renderAll();
+}
+
+function updateUndoButtons() {
+  const undoable = history.canUndo || historyTimer !== 0;
+  for (const id of ['undo', 'redo'])
+    document.getElementById(id)?.toggleAttribute('disabled', id === 'undo' ? !undoable : !history.canRedo);
+}
+
+/** Step back (or forward) in the history; the cursor and order stay where they are. */
+function undoRedo(redo: boolean) {
+  if (historyTimer) commitHistory();
+  const snapshot = redo ? history.redo() : history.undo();
+  if (snapshot === null) return;
+  song = parseSong(JSON.parse(snapshot));
+  order = Math.min(order, song.order.length - 1);
+  if (cursor.row >= pattern().rows.length) cursor = { ...cursor, row: 0 };
+  selection = null;
+  audio.setSong(song);
+  setDirty(true);
+  persist();
+  updateUndoButtons();
+  renderAll();
+  toast(t(redo ? 'edit.redone' : 'edit.undone'));
 }
 
 const pattern = () => song.patterns[song.order[order]] ?? song.patterns[0];
@@ -178,6 +216,7 @@ app.innerHTML = `
       <span class="field"><output class="badge" id="model"></output></span>
     </div>
     <div class="toolbar-end">
+      <span class="undo-btns"><button class="pill-btn" id="undo" type="button" data-i18n-title="edit.undoTitle" data-i18n-aria-label="edit.undo" disabled>↶</button><button class="pill-btn" id="redo" type="button" data-i18n-title="edit.redoTitle" data-i18n-aria-label="edit.redo" disabled>↷</button></span>
       <button class="pill-btn" id="piano-toggle" type="button" data-i18n-title="piano.toggleTitle" data-i18n="piano.toggle"></button>
       <button class="pill-btn" id="midi" type="button"></button>
       <label class="field volume" data-i18n-title="volume.title"><span data-i18n="volume.label"></span> <input type="range" id="vol" min="0" max="100" step="1"><output id="vol-out"></output></label>
@@ -372,7 +411,7 @@ function rowHtml(r: number) {
   for (let ch = 0; ch < CHANNEL_COUNT; ch++) {
     const cell = rows[r][ch];
     const fields = formatCell(cell);
-    html += '<span class="cell">';
+    html += selection && contains(selection, r, ch) ? '<span class="cell sel">' : '<span class="cell">';
     fields.forEach((text, f) => {
       const empty = text.startsWith('-');
       let c = `f${f}`;
@@ -420,6 +459,7 @@ function setCursor(next: Cursor) {
 
 function setOrder(o: number) {
   order = Math.max(0, Math.min(song.order.length - 1, o));
+  selection = null;
   if (cursor.row >= pattern().rows.length) cursor = { ...cursor, row: 0 };
   renderHeader();
   renderPattern();
@@ -429,14 +469,95 @@ function setOrder(o: number) {
 // Keep the channel header aligned when the pattern scrolls sideways on small screens.
 patternEl.addEventListener('scroll', () => ($('chan-head').scrollLeft = patternEl.scrollLeft));
 
-patternEl.addEventListener('pointerdown', (e) => {
-  const t = (e.target as HTMLElement).closest<HTMLElement>('[data-f]');
+/** Row and channel of the cell under a pointer event, if any. */
+function cellAt(e: PointerEvent) {
+  const f = (e.target as HTMLElement).closest<HTMLElement>('[data-f]');
   const row = (e.target as HTMLElement).closest<HTMLElement>('[data-row]');
-  if (!row) return;
-  const r = Number(row.dataset.row);
-  if (t) setCursor({ row: r, ch: Number(t.dataset.ch), field: Number(t.dataset.f) });
-  else setCursor({ ...cursor, row: r });
+  if (!row) return null;
+  return { row: Number(row.dataset.row), ch: f ? Number(f.dataset.ch) : cursor.ch, field: f ? Number(f.dataset.f) : cursor.field };
+}
+
+let dragAnchor: { row: number; ch: number } | null = null;
+patternEl.addEventListener('pointerdown', (e) => {
+  const at = cellAt(e);
+  if (!at) return;
+  if (e.shiftKey) {
+    // Shift-click extends the block from the cursor.
+    select({ r0: selection?.r0 ?? cursor.row, c0: selection?.c0 ?? cursor.ch, r1: at.row, c1: at.ch });
+    setCursor(at);
+    return;
+  }
+  if (selection) select(null);
+  if (e.pointerType === 'mouse') dragAnchor = { row: at.row, ch: at.ch };
+  setCursor(at);
 });
+patternEl.addEventListener('pointermove', (e) => {
+  if (!dragAnchor || !(e.buttons & 1)) return;
+  const at = cellAt(e);
+  if (!at || (selection?.r1 === at.row && selection.c1 === at.ch)) return;
+  if (!selection && at.row === dragAnchor.row && at.ch === dragAnchor.ch) return;
+  select({ r0: dragAnchor.row, c0: dragAnchor.ch, r1: at.row, c1: at.ch });
+  setCursor(at);
+});
+window.addEventListener('pointerup', () => (dragAnchor = null));
+
+// ------------------------------------------------------------------- blocks
+
+/** Selected block in the current pattern (corners as dragged, unsorted). */
+let selection: Block | null = null;
+let clipboard: ReturnType<typeof copyBlock> | null = null;
+
+function select(next: Block | null) {
+  selection = next;
+  renderPattern();
+}
+
+/** The selection, or the cell under the cursor. */
+function target(): Block {
+  return selection ?? { r0: cursor.row, r1: cursor.row, c0: cursor.ch, c1: cursor.ch };
+}
+
+function extendSelection(dRow: number, dCh: number) {
+  const rows = pattern().rows.length;
+  const b = selection ?? { r0: cursor.row, r1: cursor.row, c0: cursor.ch, c1: cursor.ch };
+  const r1 = Math.max(0, Math.min(rows - 1, b.r1 + dRow));
+  const c1 = Math.max(0, Math.min(CHANNEL_COUNT - 1, b.c1 + dCh));
+  selection = { ...b, r1, c1 };
+  cursor = { ...cursor, row: r1, ch: c1 };
+  renderPattern();
+  renderKeypad();
+}
+
+function copySelection(cut: boolean) {
+  const b = normalize(target(), pattern().rows.length);
+  clipboard = copyBlock(pattern(), b);
+  if (cut) {
+    if (!rec) return;
+    clearBlock(pattern(), b);
+    changed();
+    renderPattern();
+  }
+  toast(t(cut ? 'edit.cut' : 'edit.copied', { rows: b.r1 - b.r0 + 1, channels: b.c1 - b.c0 + 1 }));
+}
+
+function paste(mix: boolean) {
+  if (!clipboard || !rec) return;
+  const at = pasteBlock(pattern(), cursor.row, cursor.ch, clipboard, mix);
+  if (!at) return;
+  selection = at;
+  changed();
+  renderPattern();
+}
+
+function transposeSelection(semitones: number) {
+  if (!rec) return;
+  transposeBlock(pattern(), target(), semitones);
+  changed();
+  renderPattern();
+}
+
+$('undo').addEventListener('click', () => undoRedo(false));
+$('redo').addEventListener('click', () => undoRedo(true));
 
 // ------------------------------------------------------------------ editing
 
@@ -529,9 +650,34 @@ document.addEventListener('keydown', (e) => {
     void saveToLibrary();
     return;
   }
-  const target = e.target as HTMLElement;
-  if (target.closest('input, textarea, select')) return;
-  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if ((e.target as HTMLElement).closest('input, textarea, select')) return;
+  if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+    const shortcuts: Record<string, () => void> = {
+      KeyZ: () => undoRedo(e.shiftKey),
+      KeyY: () => undoRedo(true),
+      KeyC: () => copySelection(false),
+      KeyX: () => copySelection(true),
+      KeyV: () => paste(e.shiftKey),
+      KeyA: () => select({ r0: 0, r1: pattern().rows.length - 1, c0: e.shiftKey ? cursor.ch : 0, c1: e.shiftKey ? cursor.ch : CHANNEL_COUNT - 1 }),
+      ArrowUp: () => transposeSelection(e.shiftKey ? 12 : 1),
+      ArrowDown: () => transposeSelection(e.shiftKey ? -12 : -1),
+    };
+    const run = shortcuts[e.code];
+    if (run) {
+      e.preventDefault();
+      run();
+    }
+    return;
+  }
+  if (e.altKey) return;
+  if (e.shiftKey && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown'].includes(e.code)) {
+    const d = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1], PageUp: [-16, 0], PageDown: [16, 0] }[e.code]!;
+    extendSelection(d[0], d[1]);
+    e.preventDefault();
+    return;
+  }
+  if (selection && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End', 'Tab'].includes(e.code))
+    select(null);
   const rows = pattern().rows.length;
   const field = FIELDS[cursor.field];
   let handled = true;
@@ -569,7 +715,11 @@ document.addEventListener('keydown', (e) => {
       break;
     case 'Delete':
     case 'Backspace':
-      clearCurrent();
+      if (selection && rec) {
+        clearBlock(pattern(), selection);
+        changed();
+        renderPattern();
+      } else clearCurrent();
       break;
     case 'Escape':
       setRec(!rec);
@@ -643,7 +793,7 @@ function renderKeypad() {
   if (kind === (isNote ? 'note' : 'hex') && keypadEl.dataset.state === state) return;
   keypadEl.dataset.kind = isNote ? 'note' : 'hex';
   keypadEl.dataset.state = state;
-  const navRow = `<div class="row">${key('◀', 'action', `data-act="prev" aria-label="${t('keypad.prev')}"`)}${key('▲', 'action', `data-act="up" aria-label="${t('keypad.up')}"`)}${key('▼', 'action', `data-act="down" aria-label="${t('keypad.down')}"`)}${key('▶', 'action', `data-act="next" aria-label="${t('keypad.next')}"`)}</div>`;
+  const navRow = `<div class="row">${key('◀', 'action', `data-act="prev" aria-label="${t('keypad.prev')}"`)}${key('▲', 'action', `data-act="up" aria-label="${t('keypad.up')}"`)}${key('▼', 'action', `data-act="down" aria-label="${t('keypad.down')}"`)}${key('▶', 'action', `data-act="next" aria-label="${t('keypad.next')}"`)}${key('↶', 'action', `data-act="undo" aria-label="${t('edit.undo')}"`)}${key('↷', 'action', `data-act="redo" aria-label="${t('edit.redo')}"`)}</div>`;
   if (isNote) {
     const names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
     const keys = names.map((n, i) => key(n, n.includes('#') ? 'sharp' : '', `data-semi="${i}"`));
@@ -701,6 +851,10 @@ keypadEl.addEventListener('pointerdown', (e) => {
         break;
       case 'down':
         setCursor(moveCursor(cursor, rows, 1));
+        break;
+      case 'undo':
+      case 'redo':
+        undoRedo(b.dataset.act === 'redo');
         break;
     }
   renderHeader();
@@ -1547,6 +1701,11 @@ function renderHelpPanel() {
     [t('help.keyName.ins'), 'help.key.insert'],
     ['Esc', 'help.key.rec'],
     ['[ / ]', 'help.key.octave'],
+    ['Ctrl+Z / Ctrl+Y', 'help.key.undo'],
+    [t('help.keyName.shiftArrows'), 'help.key.select'],
+    ['Ctrl+C / Ctrl+X', 'help.key.copy'],
+    ['Ctrl+V', 'help.key.paste'],
+    ['Ctrl+↑ / Ctrl+↓', 'help.key.transpose'],
     [t('help.keyName.save'), 'help.key.save'],
   ];
   const table = (rows: [string, string][]) =>
@@ -1581,6 +1740,11 @@ function loadSong(next: Song, id: string | null) {
   if (playing) togglePlay();
   song = next;
   songId = id;
+  if (historyTimer) clearTimeout(historyTimer);
+  historyTimer = 0;
+  history.reset(JSON.stringify(next));
+  selection = null;
+  updateUndoButtons();
   dirty = false;
   order = 0;
   cursor = { row: 0, ch: 0, field: 0 };

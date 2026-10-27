@@ -47,7 +47,7 @@ published to GitHub Pages automatically after merging. Finished items are ticked
 - [x] Video export with oscilloscopes and scrolling patterns (WebM, VP9/VP8 + Opus via WebCodecs)
 
 ## Phase 7 – Comfort
-- [ ] Undo/redo, copy/paste of blocks, transpose
+- [x] Undo/redo, copy/paste of blocks, transpose
 - [ ] Instrument macros (per-tick tables for duty/volume/pitch)
 - [ ] PWA: works offline, installable on phones
 - [x] MIDI input

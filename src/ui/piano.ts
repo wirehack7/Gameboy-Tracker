@@ -25,7 +25,7 @@ export function pianoKeys(octave: number, octaves: number): PianoKey[] {
   return keys;
 }
 
-/** How many octaves fit a given width (about 22 px per white key at least). */
-export function pianoOctaves(width: number): number {
-  return Math.max(1, Math.min(4, Math.floor(width / (7 * 26))));
+/** How many octaves fit a given width with white keys at least `minKey` px wide (wider for touch). */
+export function pianoOctaves(width: number, minKey = 26): number {
+  return Math.max(1, Math.min(4, Math.floor(width / (7 * minKey))));
 }

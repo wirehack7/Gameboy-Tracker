@@ -44,6 +44,7 @@ const VOLUME_KEY = 'gb-tracker.volume';
 const PIANO_KEY = 'gb-tracker.piano';
 const MIDI_KEY = 'gb-tracker.midi';
 const LANG_KEY = 'gb-tracker.lang';
+const REC_KEY = 'gb-tracker.rec';
 const DEFAULT_VOLUME = 35;
 
 // ------------------------------------------------------------------ storage
@@ -88,6 +89,8 @@ let playing = false;
 let playPos = { order: -1, row: -1 };
 let follow = true;
 let pianoVisible = loadStored(PIANO_KEY) !== 'off';
+/** Record mode: off means notes are only played, nothing is edited. */
+let rec = loadStored(REC_KEY) !== 'off';
 let pianoState = '';
 const muted = [false, false, false, false];
 let tab: 'inst' | 'wave' | 'song' | 'file' | 'help' = 'inst';
@@ -124,6 +127,7 @@ app.innerHTML = `
       <button type="button" class="round-btn" id="play-song" data-i18n-title="transport.playSong" data-i18n-aria-label="transport.playSongLabel">▶</button>
       <button type="button" class="round-btn" id="play-pattern" data-i18n-title="transport.loopPattern" data-i18n-aria-label="transport.loopPatternLabel">⟳</button>
       <button type="button" class="round-btn dark" id="stop" data-i18n-title="transport.stop" data-i18n-aria-label="transport.stop">■</button>
+      <button type="button" class="round-btn rec" id="rec" data-i18n-title="transport.rec" data-i18n-aria-label="transport.recLabel">●</button>
     </div>
     <div class="fields">
       ${stepper('ord', 'field.ord', 'field.ordTitle')}
@@ -398,6 +402,7 @@ patternEl.addEventListener('pointerdown', (e) => {
 // ------------------------------------------------------------------ editing
 
 function editCell(fn: (c: ReturnType<typeof pattern>['rows'][0][0]) => void, advance = true) {
+  if (!rec) return;
   const r = cursor.row;
   fn(pattern().rows[r][cursor.ch]);
   changed();
@@ -423,12 +428,16 @@ function release(ch: number) {
 
 /** Piano, MIDI and touch note input: enter on a note field, otherwise just play it. */
 function playNote(note: number) {
-  if (FIELDS[cursor.field] === 'note') putNote(note);
+  if (rec && FIELDS[cursor.field] === 'note') putNote(note);
   else preview(cursor.ch, note);
 }
 
 function putNote(note: number) {
   const ch = cursor.ch;
+  if (!rec) {
+    preview(ch, note);
+    return;
+  }
   editCell((c) => enterNote(c, note, instrument));
   if (note >= 0) preview(ch, note);
 }
@@ -518,7 +527,11 @@ document.addEventListener('keydown', (e) => {
     case 'Backspace':
       clearCurrent();
       break;
+    case 'Escape':
+      setRec(!rec);
+      break;
     case 'Insert':
+      if (!rec) break;
       insertRow(pattern(), cursor.ch, cursor.row);
       changed();
       renderPattern();
@@ -542,8 +555,9 @@ document.addEventListener('keydown', (e) => {
   }
   if (e.repeat) return;
 
-  if (field === 'note') {
-    if (e.code === 'Digit1' || e.code === 'Backquote') {
+  // Without record mode the note keys play on every field.
+  if (field === 'note' || !rec) {
+    if (rec && (e.code === 'Digit1' || e.code === 'Backquote')) {
       putNote(NOTE_OFF);
       e.preventDefault();
       return;
@@ -651,6 +665,17 @@ keypadEl.addEventListener('pointerdown', (e) => {
 keypadEl.addEventListener('pointerup', () => release(cursor.ch));
 keypadEl.addEventListener('pointercancel', () => release(cursor.ch));
 
+// --------------------------------------------------------------- rec mode
+
+function setRec(on: boolean) {
+  rec = on;
+  store(REC_KEY, on ? 'on' : 'off');
+  app.dataset.rec = on ? 'on' : 'off';
+  $('rec').setAttribute('aria-pressed', String(on));
+}
+$('rec').addEventListener('click', () => setRec(!rec));
+setRec(rec);
+
 // ------------------------------------------------------------------- piano
 
 function renderPiano() {
@@ -659,7 +684,8 @@ function renderPiano() {
   pianoEl.hidden = !pianoVisible;
   $('piano-toggle').setAttribute('aria-pressed', String(pianoVisible));
   if (!pianoVisible) return;
-  const octaves = pianoOctaves(pianoEl.clientWidth || window.innerWidth);
+  const coarse = window.matchMedia('(pointer: coarse)').matches;
+  const octaves = pianoOctaves(pianoEl.clientWidth || window.innerWidth, coarse ? 46 : 26);
   const state = `${octave}/${octaves}`;
   if (state === pianoState) return;
   pianoState = state;
@@ -1311,6 +1337,7 @@ function renderHelpPanel() {
     [t('help.keyName.shiftSpace'), 'help.key.loop'],
     [t('help.keyName.del'), 'help.key.clear'],
     [t('help.keyName.ins'), 'help.key.insert'],
+    ['Esc', 'help.key.rec'],
     ['[ / ]', 'help.key.octave'],
   ];
   const table = (rows: [string, string][]) =>

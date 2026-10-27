@@ -9,6 +9,8 @@ export const de: Translation = {
   'transport.loopPattern': 'Pattern ab Cursor in Schleife (Umschalt+Leertaste)',
   'transport.loopPatternLabel': 'Pattern in Schleife',
   'transport.stop': 'Stopp',
+  'transport.rec': 'Aufnahmemodus (Esc): an = Noten werden eingetragen, aus = nur gespielt',
+  'transport.recLabel': 'Aufnahmemodus',
   'field.ord': 'ORD',
   'field.ordTitle': 'Position in der Order-Liste',
   'field.pat': 'PAT',
@@ -175,7 +177,7 @@ export const de: Translation = {
   'help.touchHint':
     'Ein Feld antippen, dann Noten oder Hex-Werte auf dem Tastenfeld eingeben. Die Pfeiltasten bewegen den Cursor. ▶ spielt den Song, ⟳ wiederholt das Pattern ab dem Cursor, ■ stoppt.',
   'help.piano': 'KLAVIER UND MIDI',
-  'help.pianoHint': 'TASTEN blendet das Klavier ein (Maus oder Touch). Auf einem Notenfeld trägt eine Taste die Note ein, sonst wird sie nur gespielt; Wischen über die Tasten spielt, ohne einzutragen. Es beginnt bei der aktuellen Oktave. MIDI verbindet alle MIDI-Keyboards (Chrome, Edge, Firefox; nicht Safari). MIDI-Note 60 ist C-4.',
+  'help.pianoHint': 'TASTEN blendet das Klavier ein (Maus oder Touch). Mit Aufnahmemodus (●) und Cursor auf einem Notenfeld trägt eine Taste die Note ein, sonst wird sie nur gespielt; Wischen über die Tasten spielt, ohne einzutragen. Es beginnt bei der aktuellen Oktave. MIDI verbindet alle MIDI-Keyboards (Chrome, Edge, Firefox; nicht Safari). MIDI-Note 60 ist C-4.',
   'help.effects': 'EFFEKTE',
   'help.footer':
     'Der Klang wird zyklusgenau aus den APU-Registern des Game Boy erzeugt. Ein Tick ist ein Frame (≈ 59,73 Hz).',
@@ -192,6 +194,7 @@ export const de: Translation = {
   'help.key.loop': 'Pattern ab Cursor in Schleife',
   'help.key.clear': 'Feld löschen',
   'help.key.insert': 'Zeile einfügen',
+  'help.key.rec': 'Aufnahmemodus an/aus (aus: Noten werden nur gespielt, nichts wird geändert)',
   'help.key.octave': 'Oktave runter / hoch (auch Ziffernblock − / +)',
   'help.fx.0': 'Arpeggio: Note, +x, +y Halbtöne pro Tick',
   'help.fx.1': 'Tonhöhe pro Tick um xx erhöhen',

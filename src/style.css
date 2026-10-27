@@ -116,6 +116,23 @@ button {
   color: var(--pill-ink);
 }
 
+.round-btn.rec {
+  background: var(--pill);
+  color: var(--pill-ink);
+  font-size: 15px;
+}
+
+.round-btn.rec[aria-pressed='true'] {
+  background: radial-gradient(circle at 35% 30%, #ff6b6b, #d61f1f 65%);
+  color: #fff;
+  box-shadow: 0 0 8px rgb(214 31 31 / 0.6);
+}
+
+#app[data-rec='off'] .cell .cursor {
+  background: var(--pill);
+  color: var(--pill-ink) !important;
+}
+
 .round-btn[aria-pressed='true'] {
   box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--accent);
 }

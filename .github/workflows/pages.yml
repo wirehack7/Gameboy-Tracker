@@ -30,7 +30,7 @@ jobs:
           # Analytics snippet (raw HTML) of the live site, from the repository variable
           # TRACKING_CODE (Settings > Secrets and variables > Actions > Variables). Unset = no tracking.
           TRACKING_CODE: ${{ vars.TRACKING_CODE }}
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

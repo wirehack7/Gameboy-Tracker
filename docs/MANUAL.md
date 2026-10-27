@@ -57,6 +57,7 @@ Your work is saved in the browser automatically after every change.
 | ▶ | Play the song from the start of the current order position. |
 | ⟳ | Loop the current pattern, starting at the cursor row. |
 | ■ | Stop. |
+| ● | Record mode on or off (also `Esc`). When it is off, notes are only played and the pattern is not changed, see [Record mode](#record-mode). |
 | ORD | Current position in the order list (hex). The arrows step through the song. |
 | PAT | Number of the pattern at that position (hex). |
 | OCT | Octave for note entry (2–8). |
@@ -136,6 +137,19 @@ Row numbers, order positions, pattern numbers and effect parameters are hexadeci
 
 ## Entering notes and values
 
+### Record mode
+
+The red **●** button next to Stop (or `Esc`) switches record mode on and off. It is on by default, and the
+tracker remembers the setting.
+
+- **On:** notes and values are entered into the pattern as described below.
+- **Off:** the tracker becomes an instrument to jam on. Notes from the computer keyboard, the on-screen piano,
+  the keypad and MIDI are only played, on every column, and nothing in the pattern changes: hex digits,
+  `Delete`, note off and `Insert` are ignored. The cursor turns grey so you can see that editing is off.
+  Moving the cursor and playback work as usual, so you can play along with the song.
+
+### Entering values
+
 - **Notes:** move the cursor to a note column and press a note key (see below), or tap a key on the on-screen
   keypad. The note is written together with the currently selected instrument, and you hear it.
   `1` (or the key left of `1`, `` ` ``) writes a note off `===`.
@@ -181,6 +195,7 @@ the upper row starts one octave higher (`Q` = C, `2` = C#, … `P` = E two octav
 | `Home` / `End` | First / last row |
 | `Space` | Play song / stop |
 | `Shift+Space` | Loop the current pattern from the cursor row / stop |
+| `Esc` | Record mode on / off |
 | `Delete`, `Backspace` | Clear field |
 | `Insert` | Insert an empty row in the current channel |
 | `[` or Numpad `−` | Octave down |
@@ -218,10 +233,11 @@ Tip: add the page to your home screen for a full-screen tracker without browser 
 **KEYS** in the toolbar shows or hides a piano keyboard under the pattern. The tracker remembers the setting.
 
 - The piano starts at C of the current octave (**OCT**, `[` `]`) and shows as many octaves as fit the
-  width of the window (up to 4).
-- With the cursor on a **note column**, pressing a key enters the note and plays it, like a note key on the
-  computer keyboard. On any other column the key only plays the note, so you can try out melodies without
-  changing the pattern.
+  width of the window (up to 4). On touch screens the keys are wider, about 45 px, so a phone shows one octave
+  and a tablet about three.
+- With [record mode](#record-mode) on and the cursor on a **note column**, pressing a key enters the note and
+  plays it, like a note key on the computer keyboard. On any other column, or with record mode off, the key only
+  plays the note, so you can try out melodies without changing the pattern.
 - Sliding across the keys (with the mouse button or finger held) plays each key you pass, without entering
   anything. Only the first key you pressed is entered.
 - The note sounds while you hold the key, with the current instrument on the channel under the cursor. The key
@@ -235,8 +251,8 @@ and enter notes.
 1. Connect the keyboard, then press **MIDI** in the toolbar. The browser asks for permission the first time.
 2. The button now shows the number of inputs, for example **MIDI 1**. Hover over it to see their names.
    Devices plugged in later are picked up automatically.
-3. Play: notes follow the same rules as the on-screen piano. On a note column a key enters the note, elsewhere it
-   only plays it. A note sounds until you release all keys.
+3. Play: notes follow the same rules as the on-screen piano. With record mode on and the cursor on a note column
+   a key enters the note, otherwise it only plays it. A note sounds until you release all keys.
 
 MIDI listens on all inputs and all MIDI channels; velocity is ignored, the volume comes from the instrument.
 MIDI note 60 (middle C) is **C-4** in the tracker, so the tracker's range C-2 to B-8 is MIDI 36 to 119; notes

@@ -8,7 +8,7 @@
  * - at desktop, laptop, tablet and phone sizes (in WebKit: emulated iPhones and an iPad) the
  *   tracker loads without errors and without sideways scrolling, Play starts and Stop stops,
  *   and on phones the bottom bar switches between the pattern, list and editor views;
- * - typing notes on the computer keyboard and tapping the on-screen keypad change the song,
+ * - typing notes on the computer keyboard and tapping the on-screen piano and keypad change the song,
  *   and the song survives a reload (localStorage);
  * - every export (song JSON, WAV, VGM, GBS, ROM, GBDK zip) hands over a file with the right
  *   header;
@@ -160,23 +160,33 @@ for (const screen of screens) {
   }
 
   if (touch) {
-    await check(`${screen.name}: on-screen keypad enters a note`, async () => {
+    await check(`${screen.name}: piano and keypad enter notes`, async () => {
       const { context, page, errors } = await open(screen);
       try {
         const note = () => page.locator('#pattern .prow[data-row="0"] [data-ch="0"][data-f="0"]').textContent();
-        // Put the cursor on row 00, channel 1, note field, clear it, then tap E and DEL.
+        // Put the cursor on row 00, channel 1, note field, clear it, then play E on the piano
+        // and enter a note-off from the keypad.
         await press(page, page.locator('#pattern .prow[data-row="0"] [data-ch="0"][data-f="0"]'), touch);
+        assert(await page.locator('#piano').isVisible(), 'the piano is not shown');
         assert(await page.locator('#keypad').isVisible(), 'the keypad is not shown');
         const rows = await page.locator('#pattern').evaluate((el) => el.clientHeight);
-        assert(rows >= 64, `the keypad leaves the pattern only ${rows}px`);
+        assert(rows >= 64, `the piano and keypad leave the pattern only ${rows}px`);
         await press(page, page.locator('#keypad [data-act="del"]'), touch);
         await press(page, page.locator('#keypad [data-act="up"]'), touch);
         assert((await note()) === '···', `row 00 still shows ${await note()} after DEL`);
-        await press(page, page.locator('#keypad [data-semi="4"]'), touch);
-        assert(/^E-\d$/.test(await note()), `tapping E wrote ${await note()}`);
+        // The third white key from the left is an E.
+        await press(page, page.locator('#piano .pkey.white').nth(2), touch);
+        assert(/^E-\d$/.test(await note()), `tapping E on the piano wrote ${await note()}`);
         await press(page, page.locator('#keypad [data-act="up"]'), touch);
         await press(page, page.locator('#keypad [data-act="off"]'), touch);
         assert((await note()) === '===', `tapping OFF wrote ${await note()}`);
+
+        // With the piano hidden the keypad has note keys instead.
+        await press(page, page.locator('#piano-toggle'), touch);
+        assert(await page.locator('#piano').isHidden(), 'KEYS did not hide the piano');
+        await press(page, page.locator('#keypad [data-act="up"]'), touch);
+        await press(page, page.locator('#keypad [data-semi="7"]'), touch);
+        assert(/^G-\d$/.test(await note()), `tapping G on the keypad wrote ${await note()}`);
         assert(errors.length === 0, `errors: ${errors.join(' | ')}`);
       } finally {
         await context.close();

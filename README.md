@@ -63,7 +63,7 @@ npm run smoke   # browser smoke test of dist/ (add --firefox or --webkit)
 
 `npm run smoke` serves the built site and drives it with Playwright: at desktop, tablet and phone sizes
 (in WebKit: emulated iPhones and an iPad) it checks that the tracker loads without errors or sideways
-scrolling, that playback starts and stops, that the phone view switcher and the on-screen keypad work, that
+scrolling, that playback starts and stops, that the phone view switcher, the on-screen piano and the keypad work (and leave the pattern room on small and sideways phones), that
 typed notes are saved and survive a reload, and that every export hands over a file with the right header.
 An optional folder argument collects screenshots. CI runs it in Chromium, Firefox and WebKit.
 

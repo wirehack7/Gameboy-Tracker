@@ -1,0 +1,136 @@
+<!doctype html>
+<!-- Source of docs/images/social-preview.png (GitHub social preview, 1280x640).
+     Render: node scripts/render-social-preview.mjs -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Game Boy Tracker social preview</title>
+<style>
+  :root {
+    --bg: #e4e0d7; --surface: #f1eee8; --line: #c7c1b4; --ink: #26262e; --ink-soft: #6b6873;
+    --accent: #a3224f; --accent-hi: #bd3968; --navy: #2b2f86; --stripe-a: #8e2e5c; --stripe-b: #2e3080;
+    --pat-bg: #f8f6f1; --pat-beat: #efebe2; --pat-play: #a3224f;
+    --c-num: #9a958b; --c-note: #23288a; --c-inst: #a3224f; --c-vol: #2d7a31; --c-fx: #b25700;
+    --c-param: #7a4a12; --c-empty: #c9c4b9; --c-off: #8b8790;
+    --lcd-bg: #b4c27c; --lcd-ink: #1f2b17; --lcd-dim: #6f7f48;
+    --mono: 'DejaVu Sans Mono', 'Liberation Mono', monospace;
+    --sans: 'DejaVu Sans', 'Liberation Sans', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1280px; height: 640px; overflow: hidden; background: var(--bg); color: var(--ink); font-family: var(--sans); }
+  .frame { position: absolute; inset: 0; display: grid; grid-template-columns: 560px 1fr; }
+  .stripes { position: absolute; left: 0; right: 0; top: 0; height: 14px; background: var(--stripe-a); box-shadow: 0 8px 0 var(--stripe-b); }
+  .stripes.bottom { top: auto; bottom: 8px; height: 10px; }
+  .left { padding: 64px 0 0 72px; position: relative; }
+  .badges { display: flex; gap: 14px; margin-bottom: 26px; }
+  .btn { width: 58px; height: 58px; border-radius: 50%; color: #fbf2f5; font: 700 26px var(--sans);
+         display: grid; place-items: center; background: radial-gradient(circle at 35% 30%, var(--accent-hi), var(--accent) 65%);
+         box-shadow: 0 4px 0 #6e1636; }
+  .btn.b { margin-top: 18px; }
+  h1 { font: 800 76px/0.98 var(--sans); letter-spacing: -2px; color: var(--navy); }
+  h1 span { color: var(--accent); }
+  .tag { margin-top: 26px; font: 500 25px/1.38 var(--sans); color: var(--ink); max-width: 450px; }
+  .chips { margin-top: 28px; display: flex; flex-wrap: wrap; gap: 8px; max-width: 450px; }
+  .chip { font: 700 14px var(--mono); padding: 6px 10px; border-radius: 999px; background: #8b8790; color: #f4f2f6; }
+  .url { position: absolute; left: 72px; bottom: 58px; font: 700 27px var(--mono); color: var(--accent); }
+  .right { padding: 58px 64px 0 0; display: flex; flex-direction: column; gap: 18px; }
+  .lcd { background: #3d3f4a; border-radius: 14px 14px 46px 14px; padding: 18px 22px 22px; box-shadow: 0 6px 0 #2a2b33; }
+  .lcd-label { font: 700 12px var(--sans); color: #b9b6c2; letter-spacing: 2px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .lcd-label i { width: 10px; height: 10px; border-radius: 50%; background: #e2344f; box-shadow: 0 0 6px #e2344f; }
+  .scopes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; background: var(--lcd-bg); padding: 10px; border-radius: 4px; }
+  .scope { height: 92px; border: 2px solid var(--lcd-dim); border-radius: 2px; position: relative; }
+  .scope b { position: absolute; left: 5px; top: 3px; font: 700 11px var(--mono); color: var(--lcd-ink); }
+  .scope svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .grid { background: var(--pat-bg); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; font: 700 17px/1 var(--mono); }
+  .row { display: grid; grid-template-columns: 38px repeat(4, 1fr); height: 26px; align-items: center; }
+  .row:nth-child(4n+2) { background: var(--pat-beat); }
+  .row.head { background: var(--navy); color: #f1eee8; font: 700 13px var(--sans); height: 28px; letter-spacing: 1px; }
+  .row.head > div { padding-left: 10px; }
+  .row.play { background: var(--pat-play) !important; }
+  .row.play * { color: #fbf2f5 !important; }
+  .num { color: var(--c-num); padding-left: 8px; }
+  .cell { padding-left: 10px; white-space: pre; border-left: 1px solid var(--line); }
+  .n { color: var(--c-note); } .i { color: var(--c-inst); } .v { color: var(--c-vol); }
+  .f { color: var(--c-fx); } .p { color: var(--c-param); } .e { color: var(--c-empty); } .o { color: var(--c-off); }
+</style>
+</head>
+<body>
+<div class="stripes"></div>
+<div class="stripes bottom"></div>
+<div class="frame">
+  <div class="left">
+    <div class="badges"><div class="btn b">B</div><div class="btn">A</div></div>
+    <h1>Game Boy<br><span>Tracker</span></h1>
+    <p class="tag">Make DMG &amp; Game Boy Color music right in your browser, on desktop and phone.</p>
+    <div class="chips">
+      <span class="chip">ROM</span><span class="chip">GBS</span><span class="chip">VGM</span><span class="chip">GBDK C</span><span class="chip">XM / MOD</span><span class="chip">WAV</span><span class="chip">VIDEO</span>
+    </div>
+    <div class="url">gb.chiptrackr.com</div>
+  </div>
+  <div class="right">
+    <div class="lcd">
+      <div class="lcd-label"><i></i>DOT MATRIX WITH STEREO SOUND</div>
+      <div class="scopes" id="scopes"></div>
+    </div>
+    <div class="grid" id="grid"></div>
+  </div>
+</div>
+<script>
+  // Oscilloscopes: pulse 12.5 %, pulse 50 %, wave (triangle-ish), noise.
+  const W = 140, H = 88, mid = H / 2 + 6;
+  const wave = (k) => {
+    const pts = [];
+    if (k === 3) {
+      // Noise: random levels held for random short runs, like the 15-bit LFSR at a low clock.
+      let seed = 7, x = 0;
+      const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      while (x < W) {
+        const y = mid + Math.round((rnd() * 2 - 1) * 26);
+        const len = 2 + Math.floor(rnd() * 6);
+        pts.push([x, y], [x + len, y]);
+        x += len;
+      }
+    } else if (k === 2) {
+      for (let x = 0; x <= W; x += 2) {
+        const ph = (x / 46) % 1, y = ph < 0.5 ? ph * 4 - 1 : 3 - ph * 4;
+        pts.push([x, mid - Math.round(y * 8) * 3]);
+      }
+    } else {
+      const per = k === 0 ? 34 : 46, duty = k === 0 ? 0.125 : 0.5, amp = k === 0 ? 24 : 18;
+      for (let x = 0; x <= W; x++) pts.push([x, mid + (((x / per) % 1) < duty ? -amp : amp)]);
+    }
+    return pts.map((p, i) => (i ? 'L' : 'M') + p[0] + ' ' + p[1]).join('');
+  };
+  document.getElementById('scopes').innerHTML = ['PU1', 'PU2', 'WAV', 'NOI'].map((n, k) =>
+    `<div class="scope"><b>${n}</b><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+     <path d="${wave(k)}" fill="none" stroke="#1f2b17" stroke-width="3" stroke-linejoin="miter"/></svg></div>`).join('');
+
+  // Pattern rows: [note, inst, vol, fx, param] per channel, null = empty.
+  const E = null;
+  const rows = [
+    [['C-4','01','F','A','01'], ['E-5','02','C',E,E], ['C-3','03','F',E,E], ['C-6','04','F',E,E]],
+    [E, E, E, E],
+    [['G-4','01','D',E,E], ['G-5','02','A','4','37'], E, ['C-6','04','8',E,E]],
+    [E, ['OFF',E,E,E,E], ['C-3','03','B','1','02'], E],
+    [['A#4','01','F','0','47'], ['C-6','02','C',E,E], E, ['C-6','04','F',E,E]],
+    [E, E, ['G-3','03','F',E,E], E],
+    [['F-4','01','C',E,E], ['A-5','02','9','B','00'], E, ['C-6','04','6',E,E]],
+    [['D#4','01','F','3','20'], E, ['F-3','03','F',E,E], E],
+    [['C-4','01','F',E,E], ['E-5','02','C',E,E], ['C-3','03','F',E,E], ['C-6','04','F',E,E]],
+    [E, E, E, ['OFF',E,E,E,E]],
+    [['G-4','01','D','4','26'], ['D-6','02','A',E,E], ['C-3','03','8','2','04'], E],
+  ];
+  const cell = (c) => {
+    if (!c) return '<span class="e">--- -- - ---</span>';
+    if (c[0] === 'OFF') return '<span class="o">OFF</span> <span class="e">-- - ---</span>';
+    const [n, i, v, f, p] = c;
+    return `<span class="n">${n}</span> <span class="i">${i}</span> <span class="v">${v}</span> ` +
+      (f ? `<span class="f">${f}</span><span class="p">${p}</span>` : '<span class="e">---</span>');
+  };
+  document.getElementById('grid').innerHTML =
+    '<div class="row head"><div>#</div><div>PULSE 1</div><div>PULSE 2</div><div>WAVE</div><div>NOISE</div></div>' +
+    rows.map((r, idx) => `<div class="row${idx === 4 ? ' play' : ''}"><div class="num">${idx.toString(16).toUpperCase().padStart(2, '0')}</div>` +
+      r.map((c) => `<div class="cell">${cell(c)}</div>`).join('') + '</div>').join('');
+</script>
+</body>
+</html>

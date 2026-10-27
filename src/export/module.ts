@@ -9,6 +9,7 @@
  */
 import { DUTY_TABLE } from '../apu/apu';
 import { FX, waveVolumeCode } from '../tracker/player';
+import { sampleLevels } from '../tracker/sample';
 import { NOTE_COUNT, PULSE_PERIODS, WAVE_PERIODS } from '../tracker/notes';
 import { CHANNEL_COUNT, CHANNEL_KINDS, Cell, ChannelKind, EMPTY, NOTE_OFF, Pattern, Song } from '../tracker/song';
 
@@ -109,6 +110,24 @@ export function instrumentWaveform(song: Song, ref: InstrumentRef, scale: number
   return out;
 }
 
+/**
+ * The tracker sample a wave instrument plays, or null for a waveform.
+ * Samples play at a fixed rate (SAMPLE_RATE) whatever the note.
+ */
+export function instrumentSample(song: Song, ref: InstrumentRef): string | null {
+  if (ref.kind !== 'wave') return null;
+  const i = song.waveInstruments[ref.index]?.sample ?? -1;
+  return i >= 0 && i < song.samples.length ? song.samples[i].data : null;
+}
+
+/** Tracker note that sample instruments are written with (C-5); the sample is tuned to play at its rate there. */
+export const SAMPLE_NOTE = 36;
+
+/** 8-bit sample data of a 4-bit tracker sample (same scale as waveCycle). */
+export function sampleData(hex: string): Int8Array {
+  return Int8Array.from(sampleLevels(hex), (v) => Math.round((v - 7.5) * 16));
+}
+
 /** Default volume 0..64 of an instrument, as the player loads it. */
 export function instrumentVolume(song: Song, ref: InstrumentRef): number {
   if (ref.kind === 'wave') return waveVolume64(song.waveInstruments[ref.index].volume);
@@ -137,6 +156,7 @@ export interface EnvelopePoint {
  * envelope and length counter, in ticks. Empty when the volume is constant.
  */
 export function volumeEnvelope(song: Song, ref: InstrumentRef): EnvelopePoint[] {
+  if (instrumentSample(song, ref) !== null) return []; // samples run without the length counter
   if (ref.kind === 'wave') {
     const len = song.waveInstruments[ref.index].length;
     return len ? cutAt([{ tick: 0, value: 64 }], (len / 256) * TICK_HZ) : [];
@@ -264,6 +284,8 @@ export interface ConvertOptions {
   globalVolume: boolean;
   /** Map a Bxx order position (MOD may split patterns). */
   orderPosition?: (pos: number) => number;
+  /** Instruments that play a fixed-rate sample: notes become SAMPLE_NOTE, pitch effects are dropped. */
+  isSample?: (ref: InstrumentRef) => boolean;
 }
 
 /** Translate one pattern. `defaultNote` gives a pitch for slides before any note. */
@@ -286,18 +308,22 @@ export function convertPattern(
       const out = rows[r][ch];
       const kind = CHANNEL_KINDS[ch];
       if (cell.instrument !== EMPTY) instrument[ch] = cell.instrument;
-      const porta = cell.effect === FX.PORTAMENTO && cell.note >= 0;
+      const sample = opts.isSample?.({ kind, index: instrument[ch] }) ?? false;
+      const porta = cell.effect === FX.PORTAMENTO && cell.note >= 0 && !sample;
       if (cell.note === NOTE_OFF) {
         out.note = 'off';
         out.volume = 0;
       } else if (cell.note >= 0) {
-        out.note = cell.note;
+        out.note = sample ? SAMPLE_NOTE : cell.note;
         lastNote[ch] = cell.note;
         // The player reloads the instrument on every note, which resets the volume.
         if (!porta) out.instrument = opts.instrumentNumber({ kind, index: instrument[ch] });
       }
       if (cell.volume !== EMPTY) out.volume = cellVolume64(kind, cell.volume);
       if (cell.effect === EMPTY) return;
+      // The tracker ignores pitch effects on samples, so the module does too.
+      const pitchFx: number[] = [FX.ARPEGGIO, FX.SLIDE_UP, FX.SLIDE_DOWN, FX.PORTAMENTO, FX.VIBRATO, FX.DUTY_WAVE];
+      if (sample && pitchFx.includes(cell.effect)) return;
       const p = cell.param;
       const n = lastNote[ch];
       const ref = { kind, index: instrument[ch] };

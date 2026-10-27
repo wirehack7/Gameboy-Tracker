@@ -53,9 +53,9 @@ to put the song into your song library, where you can keep as many songs as you 
 
 ![Desktop layout, light theme](images/layout-desktop-light.png)
 
-The tracker is dressed like the 1989 Game Boy (DMG): a grey case, red A/B buttons, dark D-pad keys and a green
-LCD screen for the pattern, the order and instrument lists and the scopes, all in pixel fonts. In the dark theme
-the case turns black and the screen glows like a backlit one.
+The tracker is dressed like the 1989 Game Boy (DMG): a grey case, red A/B buttons, dark D-pad keys and pixel
+fonts. The pattern stays a light, colour-coded sheet; only the channel scopes and the wave editor are little green
+Game Boy screens. In the dark theme the case turns black and the scopes glow like a backlit screen.
 
 **Toolbar (top)**
 
@@ -77,7 +77,7 @@ the case turns black and the screen glows like a backlit one.
 | MIDI | Turns MIDI input on or off. While on, it shows the number of connected inputs. |
 | VOL | Master volume of the browser playback (default 35). Exports are not affected. |
 | Language | Language of the interface: English, Deutsch, Español, Français. The first visit picks the browser's language; your choice is remembered. This manual is in English. |
-| Theme | Cycles between automatic (follows the system), light (grey DMG case, unlit green LCD) and dark (black case, backlit LCD). |
+| Theme | Cycles between automatic (follows the system), light (grey DMG case) and dark (black case). |
 
 **Left sidebar**
 

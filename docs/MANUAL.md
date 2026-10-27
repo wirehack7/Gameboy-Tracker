@@ -5,7 +5,7 @@ and on phones and tablets with touch. Everything you hear is produced by an emul
 hardware (the APU), driven by the same register writes a sound driver makes on a real console. A song that
 sounds right in the tracker sounds the same on hardware, in the exported ROM and in your own GBDK game.
 
-**Open the tracker:** https://wirehack7.github.io/Gameboy-Tracker/
+**Open the tracker:** https://gb.chiptrackr.com/
 
 ## Contents
 

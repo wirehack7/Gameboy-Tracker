@@ -4,9 +4,9 @@ A tracker for Game Boy music that runs in the browser — on desktop with a keyb
 Sound comes from a cycle-accurate emulation of the Game Boy APU (DMG and Game Boy Color), not from imitation
 oscillators. What the tracker plays are the same register writes a sound driver makes on real hardware.
 
-**Live:** https://wirehack7.github.io/Gameboy-Tracker/
+**Live:** https://gb.chiptrackr.com/
 
-**Manual:** [docs/MANUAL.md](docs/MANUAL.md), also on the site: https://wirehack7.github.io/Gameboy-Tracker/manual.html
+**Manual:** [docs/MANUAL.md](docs/MANUAL.md), also on the site: https://gb.chiptrackr.com/manual.html
 
 What comes next is in the [roadmap](ROADMAP.md).
 

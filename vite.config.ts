@@ -5,7 +5,7 @@ import { defineConfig } from 'vite';
 import { manualPage } from './src/manual/plugin';
 
 export default defineConfig({
-  // Relative base so the build works under https://<user>.github.io/<repo>/
+  // Relative base: the build works at https://gb.chiptrackr.com/ and under https://<user>.github.io/<repo>/
   base: './',
   define: {
     __APP_VERSION__: JSON.stringify(JSON.parse(readFileSync(resolve(import.meta.dirname, 'package.json'), 'utf8')).version),

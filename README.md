@@ -15,8 +15,29 @@ What comes next is in the [roadmap](ROADMAP.md).
 - Effects: arpeggio, slides, portamento, vibrato, volume slide, delay, cut, panning, master volume, speed, jump/break
 - DMG or GBC mode per song
 - Oscilloscope per channel, click to mute
-- Save as JSON, automatic backup in the browser, WAV export
+- Save as JSON, automatic backup in the browser
+- Exports: WAV, VGM, and a GBDK-2020 project (C array + tiny driver + Makefile)
 - Game Boy look with light and dark mode
+
+## Exports
+
+All hardware exports share one base: the song captured as the exact APU register writes the player makes per
+frame (`src/export/stream.ts`). Playing that stream back reproduces the tracker output sample for sample, which
+the tests check.
+
+- **GBDK project (.zip):** `gbtr_player.c/.h` (a ~40 line driver), the song as `const uint8_t` array, an example
+  `main.c` and a `Makefile`. Call `gbtr_play(song_data, song_loop)` once and `gbtr_update()` every frame. The
+  C code is plain C99 with direct register writes, so it also works with other SDCC-based setups.
+- **VGM:** VGM 1.71 with the Game Boy DMG chip, including loop point and GD3 tags.
+- **WAV:** 16-bit stereo, rendered by the emulator.
+
+Stream format used by the C driver:
+
+| Byte | Meaning |
+| --- | --- |
+| `0x00`–`0x2F`, `vv` | write `vv` to register `0xFF10 + byte` |
+| `0x81`–`0xFE` | wait `byte & 0x7F` frames |
+| `0xFF` | continue at the loop offset |
 
 ## Development
 

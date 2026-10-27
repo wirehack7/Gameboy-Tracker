@@ -27,9 +27,9 @@ published to GitHub Pages automatically after merging. Finished items are ticked
 - [x] DMG/CGB switch per song
 
 ## Phase 3 – Developer exports
-- [ ] C arrays for GBDK (register stream + small player in C)
-- [ ] Example GBDK-2020 project that plays the export
-- [ ] VGM export (Game Boy chip), useful for other tools
+- [x] C arrays for GBDK (register stream + small player in C)
+- [x] Example GBDK-2020 project that plays the export (compiled with GBDK in CI)
+- [x] VGM export (Game Boy chip), useful for other tools
 
 ## Phase 4 – Game Boy formats
 - [ ] GBS export (Game Boy Sound System)

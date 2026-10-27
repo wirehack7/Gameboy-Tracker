@@ -9,7 +9,6 @@ import { NOTE_COUNT } from './tracker/notes';
 import {
   CHANNEL_KINDS,
   CHANNEL_COUNT,
-  EMPTY,
   INSTRUMENT_COUNT,
   NOTE_OFF,
   Song,
@@ -76,7 +75,6 @@ let cursor: Cursor = { row: 0, ch: 0, field: 0 };
 let octave = 4;
 let step = 1;
 let instrument = 0;
-let lastNote = EMPTY;
 let playing = false;
 let playPos = { order: -1, row: -1 };
 let follow = true;
@@ -103,54 +101,53 @@ const hex2 = (v: number) => v.toString(16).toUpperCase().padStart(2, '0');
 // ---------------------------------------------------------------------- DOM
 
 const app = document.getElementById('app')!;
-app.className = 'gb';
+app.dataset.view = 'pattern';
+const stepper = (id: string, label: string, title: string) =>
+  `<span class="field" title="${title}">${label} <span class="stepper"><button type="button" id="${id}-down" aria-label="${title} down">‹</button><output id="${id}"></output><button type="button" id="${id}-up" aria-label="${title} up">›</button></span></span>`;
 app.innerHTML = `
-  <header class="topbar">
-    <span class="led on" title="Power"></span>
-    <h1 class="logo">GB TRACKER<small>DMG · CGB</small></h1>
-    <button class="icon-btn" id="theme" type="button"></button>
+  <header class="toolbar">
+    <div class="brand"><span class="led" id="play-led" title="Playing"></span><h1>GB TRACKER<span>DMG · CGB</span></h1></div>
+    <div class="transport">
+      <button type="button" class="round-btn" id="play-song" title="Play song (Space)" aria-label="Play song">▶</button>
+      <button type="button" class="round-btn" id="play-pattern" title="Loop pattern from cursor (Shift+Space)" aria-label="Loop pattern">⟳</button>
+      <button type="button" class="round-btn dark" id="stop" title="Stop" aria-label="Stop">■</button>
+    </div>
+    <div class="fields">
+      ${stepper('ord', 'ORD', 'Order position')}
+      <span class="field">PAT <output id="pat"></output></span>
+      ${stepper('oct', 'OCT', 'Octave')}
+      ${stepper('ins', 'INS', 'Instrument')}
+      ${stepper('stp', 'STEP', 'Edit step')}
+      ${stepper('spd', 'SPD', 'Speed')}
+      <span class="field"><output class="badge" id="model"></output></span>
+    </div>
+    <div class="spacer"></div>
+    <button class="pill-btn" id="theme" type="button"></button>
   </header>
-  <div class="layout">
-    <section aria-label="Pattern editor">
-      <div class="bezel">
-        <div class="bezel-top"><span class="stripe"></span>DOT MATRIX WITH STEREO SOUND<span class="stripe"></span></div>
-        <div class="screen-row">
-          <div class="battery"><span class="led" id="play-led"></span>PLAY</div>
-          <div class="lcd">
-            <div class="lcd-head">
-              <span class="nav">ORD <button type="button" id="ord-prev" aria-label="Previous position">◀</button><span id="ord"></span><button type="button" id="ord-next" aria-label="Next position">▶</button></span>
-              <span id="pat"></span>
-              <span class="nav">OCT <button type="button" id="oct-down" aria-label="Octave down">-</button><span id="oct"></span><button type="button" id="oct-up" aria-label="Octave up">+</button></span>
-              <span class="nav">INS <button type="button" id="ins-down" aria-label="Previous instrument">-</button><span id="ins"></span><button type="button" id="ins-up" aria-label="Next instrument">+</button></span>
-              <span class="nav">STP <button type="button" id="stp" aria-label="Edit step"></button></span>
-              <span id="model"></span>
-            </div>
-            <div class="scopes" id="scopes"></div>
-            <div class="chan-head" id="chan-head"></div>
-            <div class="pattern" id="pattern" tabindex="0" role="grid" aria-label="Pattern"></div>
-          </div>
+  <div class="workspace">
+    <aside class="sidebar left" aria-label="Order and instruments">
+      <section class="box">
+        <h2>ORDER</h2>
+        <div class="order-list" id="order-list"></div>
+        <div class="mini-btns">
+          <button type="button" id="o-dec" title="Previous pattern number">PAT−</button>
+          <button type="button" id="o-inc" title="Next pattern number">PAT+</button>
+          <button type="button" id="o-ins" title="Insert position (same pattern)">INS</button>
+          <button type="button" id="o-dup" title="Insert a copy of this pattern">DUP</button>
+          <button type="button" id="o-del" title="Delete position">DEL</button>
         </div>
-      </div>
-      <div class="controls">
-        <div class="dpad" aria-label="Cursor">
-          <button class="up" type="button" data-move="up" aria-label="Up">▲</button>
-          <button class="left" type="button" data-move="left" aria-label="Left">◀</button>
-          <span class="mid"></span>
-          <button class="right" type="button" data-move="right" aria-label="Right">▶</button>
-          <button class="down" type="button" data-move="down" aria-label="Down">▼</button>
-        </div>
-        <div class="pills">
-          <div class="pill"><button type="button" id="btn-select" aria-label="Select: play pattern"></button>SELECT</div>
-          <div class="pill"><button type="button" id="btn-start" aria-label="Start: play/stop song"></button>START</div>
-        </div>
-        <div class="ab">
-          <div class="round"><button type="button" id="btn-b" aria-label="B: clear field"></button>B</div>
-          <div class="round"><button type="button" id="btn-a" aria-label="A: insert last note"></button>A</div>
-        </div>
-      </div>
+      </section>
+      <section class="box grow">
+        <h2 id="inst-title">INSTRUMENTS</h2>
+        <div class="inst-list" id="inst-list"></div>
+      </section>
+    </aside>
+    <main class="editor" aria-label="Pattern editor">
+      <div class="chan-head" id="chan-head"></div>
+      <div class="pattern" id="pattern" tabindex="0" role="grid" aria-label="Pattern"></div>
       <div class="keypad" id="keypad"></div>
-    </section>
-    <aside class="panels">
+    </main>
+    <aside class="sidebar right" aria-label="Editors">
       <div class="tabs" role="tablist">
         <button type="button" role="tab" data-tab="inst">INSTR</button>
         <button type="button" role="tab" data-tab="wave">WAVE</button>
@@ -161,6 +158,11 @@ app.innerHTML = `
       <div class="panel" id="panel"></div>
     </aside>
   </div>
+  <nav class="mobile-nav" aria-label="Views">
+    <button type="button" data-view="pattern">PATTERN</button>
+    <button type="button" data-view="lists">ORDER · INSTR</button>
+    <button type="button" data-view="edit">EDIT</button>
+  </nav>
   <div class="toast" id="toast" role="status"></div>
 `;
 
@@ -193,34 +195,83 @@ $('theme').addEventListener('click', () => {
 
 // ------------------------------------------------------------------ pattern
 
-const KIND_LABEL = { pulse: 'PU', wave: 'WAV', noise: 'NOI' };
+const KIND_LABEL = { pulse: 'PULSE', wave: 'WAVE', noise: 'NOISE' };
+const instKindOf = (ch: number) => CHANNEL_KINDS[ch];
+const instrumentsOf = (kind: 'pulse' | 'wave' | 'noise') =>
+  kind === 'pulse' ? song.pulseInstruments : kind === 'wave' ? song.waveInstruments : song.noiseInstruments;
 
 function renderHeader() {
-  $('ord').textContent = `${hex2(order)}/${hex2(song.order.length - 1)}`;
-  $('pat').textContent = `PAT ${hex2(song.order[order])}`;
+  $('ord').textContent = hex2(order);
+  $('pat').textContent = hex2(song.order[order]);
   $('oct').textContent = String(octave);
   $('ins').textContent = (instrument + 1).toString(16).toUpperCase();
   $('stp').textContent = String(step);
-  $('model').textContent = song.model === 'cgb' ? '[CGB]' : '[DMG]';
-  $('chan-head').innerHTML =
-    '<span class="num">  </span>' +
-    CHANNEL_KINDS.map((k, i) => `<span class="cell">CH${i + 1} ${KIND_LABEL[k]}${k === 'pulse' ? i + 1 : ''}</span>`).join('');
+  $('spd').textContent = String(song.speed);
+  $('model').textContent = song.model === 'cgb' ? 'GBC' : 'DMG';
+  renderOrderList();
+  renderInstList();
 }
+
+function renderOrderList() {
+  const el = $('order-list');
+  el.innerHTML = song.order
+    .map(
+      (p, i) =>
+        `<button type="button" data-o="${i}" aria-current="${i === order}"><span class="pos">${hex2(i)}</span><span class="pat">${hex2(p)}</span></button>`,
+    )
+    .join('');
+  (el.children[order] as HTMLElement | undefined)?.scrollIntoView({ block: 'nearest' });
+}
+
+function renderInstList() {
+  const kind = instKindOf(cursor.ch);
+  $('inst-title').textContent = `${KIND_LABEL[kind]} INSTRUMENTS`;
+  $('inst-list').innerHTML = instrumentsOf(kind)
+    .map((ins, i) => {
+      const editing = tab === 'inst' && instKind === kind && instIndex === i ? ' class="editing"' : '';
+      return `<button type="button" data-i="${i}" aria-current="${i === instrument}"${editing}><span class="idx">${(i + 1).toString(16).toUpperCase()}</span><span class="name">${escapeHtml(ins.name)}</span></button>`;
+    })
+    .join('');
+}
+
+function escapeHtml(t: string) {
+  return t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+}
+
+function renderChannelHead() {
+  $('chan-head').innerHTML =
+    '<span class="num"></span>' +
+    CHANNEL_KINDS.map(
+      (k, i) => `<div class="chan${muted[i] ? ' muted' : ''}" data-ch="${i}">
+        <div class="chan-title"><span>CH${i + 1} <span class="kind">${KIND_LABEL[k]}</span></span><button type="button" class="mute" aria-pressed="${muted[i]}" title="Mute channel ${i + 1}">M</button></div>
+        <canvas></canvas>
+      </div>`,
+    ).join('');
+  scopeCanvases = [...$('chan-head').querySelectorAll('canvas')];
+}
+
+/** Empty fields are shown as dots, like in most trackers. */
+const EMPTY_GLYPH = ['···', '·', '·', '·', '·', '·'];
 
 function rowHtml(r: number) {
   const rows = pattern().rows;
   const cls = ['prow'];
-  if (r % 4 === 0) cls.push('beat');
+  if (r % 16 === 0) cls.push('bar');
+  else if (r % 4 === 0) cls.push('beat');
   if (r === cursor.row) cls.push('cursor-row');
   if (playing && playPos.row === r && playPos.order === order) cls.push('play-row');
   let html = `<div class="${cls.join(' ')}" data-row="${r}"><span class="num">${hex2(r)}</span>`;
   for (let ch = 0; ch < CHANNEL_COUNT; ch++) {
-    const fields = formatCell(rows[r][ch]);
+    const cell = rows[r][ch];
+    const fields = formatCell(cell);
     html += '<span class="cell">';
     fields.forEach((text, f) => {
-      const empty = text.startsWith('-') ? ' empty' : '';
-      const cur = r === cursor.row && ch === cursor.ch && f === cursor.field ? ' cursor' : '';
-      html += `<span class="f${f}${empty}${cur}" data-ch="${ch}" data-f="${f}">${text}</span>`;
+      const empty = text.startsWith('-');
+      let c = `f${f}`;
+      if (empty) c += ' empty';
+      if (f === 0 && cell.note === NOTE_OFF) c += ' off';
+      if (r === cursor.row && ch === cursor.ch && f === cursor.field) c += ' cursor';
+      html += `<span class="${c}" data-ch="${ch}" data-f="${f}">${empty ? EMPTY_GLYPH[f] : text}</span>`;
     });
     html += '</span>';
   }
@@ -250,7 +301,9 @@ function scrollToRow(r: number) {
 
 function setCursor(next: Cursor) {
   const prevRow = cursor.row;
+  const kindChanged = instKindOf(cursor.ch) !== instKindOf(next.ch);
   cursor = next;
+  if (kindChanged) renderInstList();
   updateRow(prevRow);
   if (next.row !== prevRow) updateRow(next.row);
   if (!(playing && follow)) scrollToRow(cursor.row);
@@ -302,7 +355,6 @@ function release(ch: number) {
 }
 
 function putNote(note: number) {
-  if (note !== NOTE_OFF) lastNote = note;
   const ch = cursor.ch;
   editCell((c) => enterNote(c, note, instrument));
   if (note >= 0) preview(ch, note);
@@ -326,6 +378,8 @@ function togglePlay(loopPattern = false) {
     audio.send({ type: 'play', order, row: loopPattern ? cursor.row : 0, loopPattern });
   }
   $('play-led').classList.toggle('on', playing);
+  $('play-song').setAttribute('aria-pressed', String(playing && !loopPattern));
+  $('play-pattern').setAttribute('aria-pressed', String(playing && loopPattern));
   renderPattern();
 }
 
@@ -457,6 +511,7 @@ function renderKeypad() {
   if (kind === (isNote ? 'note' : 'hex') && keypadEl.dataset.oct === String(octave)) return;
   keypadEl.dataset.kind = isNote ? 'note' : 'hex';
   keypadEl.dataset.oct = String(octave);
+  const navRow = `<div class="row">${key('◀', 'action', 'data-act="prev" aria-label="Previous field"')}${key('▲', 'action', 'data-act="up" aria-label="Row up"')}${key('▼', 'action', 'data-act="down" aria-label="Row down"')}${key('▶', 'action', 'data-act="next" aria-label="Next field"')}</div>`;
   if (isNote) {
     const names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
     const keys = names.map((n, i) => key(n, n.includes('#') ? 'sharp' : '', `data-semi="${i}"`));
@@ -464,15 +519,17 @@ function renderKeypad() {
       <div class="row">${keys.slice(0, 6).join('')}</div>
       <div class="row">${keys.slice(6).join('')}</div>
       <div class="row">
-        ${key('OCT-', 'action', 'data-act="oct-"')}${key('OCT ' + octave, 'action', 'data-act="none"')}${key('OCT+', 'action', 'data-act="oct+"')}
+        ${key('OCT−', 'action', 'data-act="oct-"')}${key('OCT+', 'action', 'data-act="oct+"')}
         ${key('OFF', 'action', 'data-act="off"')}${key('DEL', 'red', 'data-act="del"')}
-      </div>`;
+      </div>
+      ${navRow}`;
   } else {
     const keys = Array.from({ length: 16 }, (_, i) => key(i.toString(16).toUpperCase(), '', `data-hex="${i}"`));
     keypadEl.innerHTML = `
       <div class="row">${keys.slice(0, 8).join('')}</div>
       <div class="row">${keys.slice(8).join('')}</div>
-      <div class="row">${key('◀ FIELD', 'action', 'data-act="prev"')}${key('FIELD ▶', 'action', 'data-act="next"')}${key('DEL', 'red', 'data-act="del"')}</div>`;
+      <div class="row">${key('DEL', 'red', 'data-act="del"')}</div>
+      ${navRow}`;
   }
 }
 
@@ -505,6 +562,12 @@ keypadEl.addEventListener('pointerdown', (e) => {
       case 'next':
         setCursor(moveCursor(cursor, rows, 0, 1));
         break;
+      case 'up':
+        setCursor(moveCursor(cursor, rows, -1));
+        break;
+      case 'down':
+        setCursor(moveCursor(cursor, rows, 1));
+        break;
     }
   renderHeader();
   renderKeypad();
@@ -512,86 +575,112 @@ keypadEl.addEventListener('pointerdown', (e) => {
 keypadEl.addEventListener('pointerup', () => release(cursor.ch));
 keypadEl.addEventListener('pointercancel', () => release(cursor.ch));
 
-// ----------------------------------------------------------- d-pad, A, B
+// ---------------------------------------------------------------- toolbar
 
-document.querySelectorAll<HTMLButtonElement>('[data-move]').forEach((b) => {
-  let repeat = 0;
-  const move = () => {
-    const rows = pattern().rows.length;
-    const d = b.dataset.move;
-    setCursor(
-      d === 'up'
-        ? moveCursor(cursor, rows, -1)
-        : d === 'down'
-          ? moveCursor(cursor, rows, 1)
-          : moveCursor(cursor, rows, 0, d === 'left' ? -1 : 1),
-    );
-  };
-  const stop = () => clearInterval(repeat);
-  b.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    move();
-    stop();
-    repeat = window.setInterval(move, 140);
+$('play-song').addEventListener('click', () => {
+  if (playing) togglePlay();
+  togglePlay(false);
+});
+$('play-pattern').addEventListener('click', () => {
+  if (playing) togglePlay();
+  togglePlay(true);
+});
+$('stop').addEventListener('click', () => playing && togglePlay());
+
+const bump = (id: string, apply: (d: number) => void) => {
+  $(`${id}-down`).addEventListener('click', () => {
+    apply(-1);
+    renderHeader();
+    renderKeypad();
   });
-  b.addEventListener('pointerup', stop);
-  b.addEventListener('pointerleave', stop);
-  b.addEventListener('pointercancel', stop);
+  $(`${id}-up`).addEventListener('click', () => {
+    apply(1);
+    renderHeader();
+    renderKeypad();
+  });
+};
+bump('ord', (d) => setOrder(order + d));
+bump('oct', (d) => (octave = Math.max(2, Math.min(8, octave + d))));
+bump('ins', (d) => (instrument = (instrument + d + INSTRUMENT_COUNT) % INSTRUMENT_COUNT));
+bump('stp', (d) => (step = Math.max(0, Math.min(16, step + d))));
+bump('spd', (d) => {
+  song.speed = Math.max(1, Math.min(31, song.speed + d));
+  changed();
+  if (tab === 'song') renderPanel();
 });
 
-$('btn-start').addEventListener('click', () => togglePlay(false));
-$('btn-select').addEventListener('click', () => togglePlay(true));
-$('btn-b').addEventListener('click', clearCurrent);
-$('btn-a').addEventListener('click', () => {
-  if (lastNote >= 0) {
-    if (FIELDS[cursor.field] !== 'note') cursor = { ...cursor, field: 0 };
-    putNote(lastNote);
-    setTimeout(() => release(cursor.ch), 250);
-  } else toast('No note entered yet');
+// ------------------------------------------------------------- side lists
+
+$('order-list').addEventListener('click', (e) => {
+  const b = (e.target as HTMLElement).closest<HTMLElement>('[data-o]');
+  if (b) setOrder(Number(b.dataset.o));
 });
 
-$('ord-prev').addEventListener('click', () => setOrder(order - 1));
-$('ord-next').addEventListener('click', () => setOrder(order + 1));
-$('oct-down').addEventListener('click', () => {
-  octave = Math.max(2, octave - 1);
+$('inst-list').addEventListener('click', (e) => {
+  const b = (e.target as HTMLElement).closest<HTMLElement>('[data-i]');
+  if (!b) return;
+  instrument = Number(b.dataset.i);
+  instKind = instKindOf(cursor.ch);
+  instIndex = instrument;
+  tab = 'inst';
   renderHeader();
-  renderKeypad();
+  renderPanel();
 });
-$('oct-up').addEventListener('click', () => {
-  octave = Math.min(8, octave + 1);
-  renderHeader();
-  renderKeypad();
+
+const setPatternAt = (delta: number) => {
+  const next = song.order[order] + delta;
+  if (next < 0) return;
+  while (next >= song.patterns.length) song.patterns.push(emptyPattern());
+  song.order[order] = next;
+  changed(true);
+};
+$('o-dec').addEventListener('click', () => setPatternAt(-1));
+$('o-inc').addEventListener('click', () => setPatternAt(1));
+$('o-ins').addEventListener('click', () => {
+  song.order.splice(order + 1, 0, song.order[order]);
+  order++;
+  changed(true);
 });
-$('ins-down').addEventListener('click', () => {
-  instrument = (instrument + INSTRUMENT_COUNT - 1) % INSTRUMENT_COUNT;
-  renderHeader();
+$('o-dup').addEventListener('click', () => {
+  song.patterns.push(clonePattern(pattern()));
+  song.order.splice(order + 1, 0, song.patterns.length - 1);
+  order++;
+  changed(true);
 });
-$('ins-up').addEventListener('click', () => {
-  instrument = (instrument + 1) % INSTRUMENT_COUNT;
-  renderHeader();
+$('o-del').addEventListener('click', () => {
+  if (song.order.length <= 1) return toast('The last position cannot be deleted');
+  song.order.splice(order, 1);
+  order = Math.min(order, song.order.length - 1);
+  changed(true);
 });
-$('stp').addEventListener('click', () => {
-  step = (step + 1) % 9;
-  renderHeader();
-});
+
+// ------------------------------------------------------------ mobile views
+
+app.querySelectorAll<HTMLButtonElement>('.mobile-nav [data-view]').forEach((b) =>
+  b.addEventListener('click', () => {
+    app.dataset.view = b.dataset.view;
+    renderMobileNav();
+    if (b.dataset.view === 'pattern') scrollToRow(cursor.row);
+  }),
+);
+
+function renderMobileNav() {
+  app
+    .querySelectorAll<HTMLButtonElement>('.mobile-nav [data-view]')
+    .forEach((b) => b.setAttribute('aria-current', String(b.dataset.view === app.dataset.view)));
+}
 
 // ------------------------------------------------------------------- scopes
 
-const scopesEl = $('scopes');
-scopesEl.innerHTML = Array.from(
-  { length: 4 },
-  (_, i) =>
-    `<div class="scope" data-ch="${i}"><canvas></canvas><button type="button" aria-pressed="false" aria-label="Mute channel ${i + 1}">${i + 1}</button></div>`,
-).join('');
-const scopeCanvases = [...scopesEl.querySelectorAll('canvas')];
-scopesEl.querySelectorAll<HTMLButtonElement>('button').forEach((b, i) =>
-  b.addEventListener('click', () => {
-    muted[i] = !muted[i];
-    b.parentElement!.classList.toggle('muted', muted[i]);
-    b.setAttribute('aria-pressed', String(muted[i]));
-    audio.send({ type: 'mute', muted: [...muted] });
-  }),
-);
+let scopeCanvases: HTMLCanvasElement[] = [];
+$('chan-head').addEventListener('click', (e) => {
+  const b = (e.target as HTMLElement).closest<HTMLElement>('.mute');
+  if (!b) return;
+  const ch = Number(b.closest<HTMLElement>('[data-ch]')!.dataset.ch);
+  muted[ch] = !muted[ch];
+  renderChannelHead();
+  audio.send({ type: 'mute', muted: [...muted] });
+});
 
 let scopeData: Float32Array | null = null;
 let scopeFrames = 0;
@@ -732,6 +821,7 @@ function renderInstrumentPanel() {
   );
   $<HTMLInputElement>('i-name').addEventListener('input', (e) => {
     ins.name = (e.target as HTMLInputElement).value;
+    renderInstList();
     changed();
   });
   if (instKind === 'pulse') {
@@ -860,14 +950,6 @@ function renderSongPanel() {
       ${slider('s-speed', 'Speed (ticks/row)', song.speed, 1, 31)}
       <label></label><div class="hint" id="s-bpm">≈ ${bpm.toFixed(1)} BPM at 4 rows per beat</div>
     </div>
-    <h2>ORDER LIST</h2>
-    <div class="order-list">${song.order.map((p, i) => `<button type="button" data-o="${i}" aria-current="${i === order}">${hex2(i)}:${hex2(p)}</button>`).join('')}</div>
-    <div class="btn-row">
-      <button type="button" class="btn" id="o-dec">Pattern −</button>
-      <button type="button" class="btn" id="o-inc">Pattern +</button>
-      <button type="button" class="btn" id="o-ins">Insert position</button>
-      <button type="button" class="btn" id="o-del">Delete position</button>
-    </div>
     <h2>PATTERN ${hex2(song.order[order])}</h2>
     <div class="btn-row" style="margin-top:0">
       <button type="button" class="btn" id="p-new">New pattern</button>
@@ -898,30 +980,8 @@ function renderSongPanel() {
   );
   bindRange('s-speed', (v) => {
     song.speed = v;
+    $('spd').textContent = String(v);
     $('s-bpm').textContent = `≈ ${((59.7275 * 60) / (v * 4)).toFixed(1)} BPM at 4 rows per beat`;
-  });
-  panelEl.querySelectorAll<HTMLButtonElement>('[data-o]').forEach((b) =>
-    b.addEventListener('click', () => setOrder(Number(b.dataset.o))),
-  );
-  const setPatternAt = (delta: number) => {
-    const next = song.order[order] + delta;
-    if (next < 0) return;
-    while (next >= song.patterns.length) song.patterns.push(emptyPattern());
-    song.order[order] = next;
-    changed(true);
-  };
-  $('o-dec').addEventListener('click', () => setPatternAt(-1));
-  $('o-inc').addEventListener('click', () => setPatternAt(1));
-  $('o-ins').addEventListener('click', () => {
-    song.order.splice(order + 1, 0, song.order[order]);
-    order++;
-    changed(true);
-  });
-  $('o-del').addEventListener('click', () => {
-    if (song.order.length <= 1) return toast('The last position cannot be deleted');
-    song.order.splice(order, 1);
-    order = Math.min(order, song.order.length - 1);
-    changed(true);
   });
   $('p-new').addEventListener('click', () => {
     song.patterns.push(emptyPattern());
@@ -1068,9 +1128,11 @@ function renderHelpPanel() {
   const table = (rows: [string, string][]) =>
     `<table class="help-table">${rows.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('')}</table>`;
   panelEl.innerHTML = `
+    <h2>PATTERN COLUMNS</h2>
+    <div class="legend"><span class="f0">C-4 note</span><span class="f1">1 instrument</span><span class="f2">F volume</span><span class="f3">A effect</span><span class="f4">0F param</span></div>
     <h2>KEYBOARD</h2>${table(keys)}
     <h2>TOUCH</h2>
-    <p class="hint">Tap a field, then enter notes or hex values on the keypad. The D-pad moves the cursor, START plays the song, SELECT the pattern, A inserts the last note, B clears.</p>
+    <p class="hint">Tap a field, then enter notes or hex values on the keypad. The arrow keys move the cursor. ▶ plays the song, ⟳ loops the pattern from the cursor, ■ stops.</p>
     <h2>EFFECTS</h2>${table(fx)}
     <p class="hint">Sound is generated cycle-accurately from the Game Boy APU registers. One tick is one frame (≈ 59.73 Hz).</p>`;
 }
@@ -1084,6 +1146,7 @@ function renderPanel() {
   else if (tab === 'song') renderSongPanel();
   else if (tab === 'file') renderFilePanel();
   else renderHelpPanel();
+  renderInstList();
 }
 
 function loadSong(next: Song) {
@@ -1096,6 +1159,8 @@ function loadSong(next: Song) {
 
 function renderAll() {
   if (order >= song.order.length) order = song.order.length - 1;
+  renderChannelHead();
+  renderMobileNav();
   renderHeader();
   renderPattern();
   renderKeypad();

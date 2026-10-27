@@ -17,7 +17,8 @@ What comes next is in the [roadmap](ROADMAP.md).
 - Oscilloscope per channel, click to mute
 - Save as JSON, automatic backup in the browser
 - Exports: WAV, VGM, and a GBDK-2020 project (C array + tiny driver + Makefile)
-- Game Boy look with light and dark mode
+- Full-window tracker layout in Game Boy colours (off-white, A/B-button red) with colour-coded pattern columns, light and dark mode
+- Responsive: desktop with side lists, tablet two-column, phone with views and an on-screen keypad
 
 ## Exports
 

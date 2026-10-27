@@ -304,4 +304,13 @@ export const en = {
   'about.jump': 'Jump',
   'about.hint': 'Press A, Space or tap the screen to jump.',
   'about.over': 'Game over. Press A to try again.',
+  // in-app confirm / prompt dialogs
+  'dialog.ok': 'OK',
+  'dialog.cancel': 'Cancel',
+  'dialog.delete': 'Delete',
+  'dialog.discard': 'Discard',
+  'dialog.clear': 'Clear',
+  'dialog.replace': 'Replace',
+  'dialog.save': 'Save',
+  'dialog.rename': 'Rename',
 } as const;

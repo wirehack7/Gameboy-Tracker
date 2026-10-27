@@ -18,6 +18,7 @@ import { NOTE_COUNT } from './tracker/notes';
 import { SongLibrary, SongMeta, copySounds, fileName, openStore, uniqueNames } from './tracker/library';
 import { track } from './analytics/track';
 import { openAbout } from './ui/about';
+import { confirmDialog, promptDialog } from './ui/ask';
 import { pianoKeys, pianoOctaves, pianoWhites } from './ui/piano';
 import { scopeTrace } from './ui/scope';
 import { Block, clearBlock, contains, copyBlock, normalize, pasteBlock, transposeBlock } from './tracker/block';
@@ -1478,9 +1479,9 @@ function bindSamples() {
     }),
   );
   panelEl.querySelectorAll<HTMLButtonElement>('[data-sdel]').forEach((b) =>
-    b.addEventListener('click', () => {
+    b.addEventListener('click', async () => {
       const i = Number(b.dataset.sdel);
-      if (!confirm(t('sample.confirmDelete', { name: song.samples[i].name }))) return;
+      if (!(await confirmDialog(t('sample.confirmDelete', { name: song.samples[i].name }), t('dialog.delete')))) return;
       deleteSample(song, i);
       changed();
       renderPanel();
@@ -1570,8 +1571,8 @@ function renderSongPanel() {
     order++;
     changed(true);
   });
-  $('p-clear').addEventListener('click', () => {
-    if (!confirm(t('song.confirmClear'))) return;
+  $('p-clear').addEventListener('click', async () => {
+    if (!(await confirmDialog(t('song.confirmClear'), t('dialog.clear')))) return;
     song.patterns[song.order[order]] = emptyPattern(pattern().rows.length);
     changed(true);
   });
@@ -1641,19 +1642,19 @@ function renderFilePanel() {
   renderSongState();
   renderLibraryList();
   const input = $<HTMLInputElement>('f-input');
-  $('f-new').addEventListener('click', () => {
-    if (!confirmDiscard()) return;
+  $('f-new').addEventListener('click', async () => {
+    if (!(await confirmDiscard())) return;
     loadSong(createSong(), null);
     track('song-new');
   });
-  $('f-demo').addEventListener('click', () => {
-    if (!confirmDiscard()) return;
+  $('f-demo').addEventListener('click', async () => {
+    if (!(await confirmDiscard())) return;
     loadSong(demoSong(), null);
     track('song-demo');
   });
   $('f-store').addEventListener('click', () => void saveToLibrary());
-  $('f-saveas').addEventListener('click', () => {
-    const title = prompt(t('lib.saveAsPrompt'), song.title + t('lib.copySuffix'));
+  $('f-saveas').addEventListener('click', async () => {
+    const title = await promptDialog(t('lib.saveAsPrompt'), song.title + t('lib.copySuffix'), t('dialog.save'));
     if (title === null) return;
     song.title = title.trim() || song.title;
     void saveToLibrary(true);
@@ -1895,8 +1896,8 @@ async function refreshLibrary() {
 }
 
 /** True when nothing unsaved would be lost, or the user agrees to lose it. */
-function confirmDiscard() {
-  return !dirty || confirm(t('lib.confirmDiscard', { title: song.title || t('lib.untitled') }));
+async function confirmDiscard() {
+  return !dirty || confirmDialog(t('lib.confirmDiscard', { title: song.title || t('lib.untitled') }), t('dialog.discard'));
 }
 
 async function saveToLibrary(asCopy = false) {
@@ -1923,12 +1924,12 @@ async function libraryAction(act: string, id: string) {
   try {
     if (act === 'open') {
       if (id === songId && !dirty) return;
-      if (!confirmDiscard()) return;
+      if (!(await confirmDiscard())) return;
       const next = await library.load(id);
       if (next) loadSong(next, id);
       toast(t('file.loaded', { title }));
     } else if (act === 'rename') {
-      const name = prompt(t('lib.renamePrompt'), meta.title);
+      const name = await promptDialog(t('lib.renamePrompt'), meta.title, t('dialog.rename'));
       if (name === null || !name.trim()) return;
       await library.rename(id, name.trim());
       if (id === songId) {
@@ -1939,14 +1940,14 @@ async function libraryAction(act: string, id: string) {
     } else if (act === 'duplicate') {
       await library.duplicate(id, t('lib.copySuffix'));
     } else if (act === 'sounds') {
-      if (!confirm(t('lib.confirmSounds', { title }))) return;
+      if (!(await confirmDialog(t('lib.confirmSounds', { title }), t('dialog.replace')))) return;
       const source = await library.load(id);
       if (!source) return;
       copySounds(song, source);
       changed(true);
       toast(t('lib.soundsToast', { title }));
     } else if (act === 'delete') {
-      if (!confirm(t('lib.confirmDelete', { title }))) return;
+      if (!(await confirmDialog(t('lib.confirmDelete', { title }), t('dialog.delete')))) return;
       await library.remove(id);
       if (id === songId) {
         songId = null;
@@ -1989,7 +1990,7 @@ async function importFiles(files: File[]) {
   track('import', { files: files.length, songs: songs.length, failed: failed.length });
   if (!songs.length) return;
   const single = songs.length === 1 && files.length === 1 && !/\.zip$/i.test(files[0].name);
-  if (single && !confirmDiscard()) return;
+  if (single && !(await confirmDiscard())) return;
   try {
     const metas = [];
     for (const s of songs) metas.push(await library.save(s));

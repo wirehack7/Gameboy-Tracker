@@ -303,4 +303,13 @@ export const de: Translation = {
   'about.jump': 'Springen',
   'about.hint': 'A, Leertaste oder Bildschirm antippen zum Springen.',
   'about.over': 'Game over. A drücken für einen neuen Versuch.',
+  // in-app confirm / prompt dialogs
+  'dialog.ok': 'OK',
+  'dialog.cancel': 'Abbrechen',
+  'dialog.delete': 'Löschen',
+  'dialog.discard': 'Verwerfen',
+  'dialog.clear': 'Leeren',
+  'dialog.replace': 'Ersetzen',
+  'dialog.save': 'Speichern',
+  'dialog.rename': 'Umbenennen',
 };

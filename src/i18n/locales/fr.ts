@@ -270,4 +270,13 @@ export const fr: Translation = {
   'help.fx.D': 'Saut de pattern, reprendre à la ligne xx',
   'help.fx.E': 'Couper la note après xx ticks',
   'help.fx.F': 'Vitesse (ticks par ligne)',
+  // in-app confirm / prompt dialogs
+  'dialog.ok': 'OK',
+  'dialog.cancel': 'Annuler',
+  'dialog.delete': 'Supprimer',
+  'dialog.discard': 'Abandonner',
+  'dialog.clear': 'Vider',
+  'dialog.replace': 'Remplacer',
+  'dialog.save': 'Enregistrer',
+  'dialog.rename': 'Renommer',
 };

@@ -26,6 +26,19 @@ textarea {
   color: inherit;
 }
 
+/* The pixel fonts have one weight; a faked bold smears their pixels. */
+button,
+select,
+.fields,
+.pattern,
+.chan-head,
+.order-list,
+.inst-list,
+.screen-label,
+h2 {
+  font-synthesis: none;
+}
+
 button {
   cursor: pointer;
 }
@@ -65,20 +78,22 @@ button {
 
 .brand h1 {
   margin: 0;
-  font-size: 18px;
-  font-weight: 800;
+  font-size: 20px;
+  font-weight: 900;
   font-style: italic;
   color: var(--navy);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
   white-space: nowrap;
+  text-shadow: 0 1px 0 var(--emboss);
 }
 
 .brand h1 span {
-  margin-left: 4px;
-  font-size: 11px;
-  font-style: normal;
-  letter-spacing: 0.25em;
-  color: var(--ink-soft);
+  margin-left: 6px;
+  font: 400 10px var(--pixel);
+  letter-spacing: 0.2em;
+  color: var(--accent);
+  text-shadow: none;
+  vertical-align: 2px;
 }
 
 .led {
@@ -147,7 +162,7 @@ button {
 }
 
 .deck-btn.rec {
-  font: 800 11px var(--mono);
+  font: 700 8px var(--pixel);
   letter-spacing: 0.14em;
 }
 
@@ -221,7 +236,8 @@ button {
   display: flex;
   flex-wrap: wrap;
   gap: 6px 14px;
-  font: 700 12px var(--mono);
+  font: 400 10px var(--pixel);
+  letter-spacing: 0.06em;
 }
 
 .field {
@@ -235,6 +251,7 @@ button {
   color: var(--ink);
   min-width: 2ch;
   text-align: center;
+  font: 20px / 1 var(--mono);
 }
 
 .stepper {
@@ -245,19 +262,28 @@ button {
 
 .stepper button {
   border: 0;
-  border-radius: 4px;
-  background: var(--surface-2);
+  border-radius: 3px;
+  background: var(--dpad);
+  color: var(--dpad-ink);
   width: 20px;
   height: 22px;
-  font: 700 12px var(--mono);
-  padding: 0;
+  font: 22px / 1 var(--mono);
+  padding: 0 0 2px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 2px 0 var(--dpad-lo);
+}
+
+.stepper button:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 var(--dpad-lo);
 }
 
 .field output.badge {
   background: var(--navy);
   color: var(--surface);
-  border-radius: 4px;
-  padding: 2px 6px;
+  border-radius: 3px;
+  padding: 3px 6px 2px;
+  font: 400 10px var(--pixel);
+  letter-spacing: 0.1em;
 }
 
 /* Right-hand controls stay together when the toolbar wraps. */
@@ -273,12 +299,17 @@ button {
 .pill-btn {
   border: 0;
   border-radius: 999px;
-  padding: 6px 12px;
+  padding: 7px 12px 6px;
   background: var(--pill);
   color: var(--pill-ink);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font: 400 10px var(--pixel);
+  letter-spacing: 0.12em;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 2px 0 var(--pill-lo);
+}
+
+.pill-btn:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 var(--pill-lo);
 }
 
 select.pill-btn {
@@ -288,7 +319,8 @@ select.pill-btn {
 }
 
 .volume {
-  font: 700 12px var(--mono);
+  font: 400 10px var(--pixel);
+  letter-spacing: 0.06em;
 }
 
 .volume input {
@@ -303,6 +335,7 @@ select.pill-btn {
 .pill-btn[aria-pressed='true'] {
   background: var(--accent);
   color: var(--accent-ink);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 2px 0 var(--accent-lo);
 }
 
 /* ---------------------------------------------------------------- layout */
@@ -362,12 +395,14 @@ select.pill-btn {
   gap: 8px;
 }
 
+/* Panels are moulded case plastic: a light top edge, a soft shadow below. */
 .box,
 .editor,
 .sidebar.right {
   background: var(--surface);
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 8px;
+  box-shadow: inset 0 1px 0 var(--emboss), 0 1px 0 rgb(0 0 0 / 0.08), 0 1px 3px rgb(0 0 0 / 0.12);
 }
 
 .box {
@@ -381,12 +416,14 @@ select.pill-btn {
   flex: 1;
 }
 
+/* Section labels look printed on the case, like SELECT / START. */
 .box h2,
 .panel h2 {
   margin: 0 0 6px;
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  color: var(--ink-soft);
+  font: 400 10px var(--pixel);
+  letter-spacing: 0.16em;
+  color: var(--navy);
+  text-shadow: 0 1px 0 var(--emboss);
 }
 
 /* ------------------------------------------------------------- side lists */
@@ -396,7 +433,13 @@ select.pill-btn {
   overflow: auto;
   min-height: 0;
   flex: 1;
-  font: 13px var(--mono);
+  padding: 2px;
+  border-radius: 3px;
+  background: var(--pat-bg);
+  color: var(--lcd-text);
+  box-shadow: inset 0 0 0 3px var(--bezel), inset 0 2px 4px 3px rgb(0 0 0 / 0.25);
+  border: 3px solid var(--bezel);
+  font: 18px / 1 var(--mono);
 }
 
 .order-list button,
@@ -406,8 +449,8 @@ select.pill-btn {
   gap: 10px;
   border: 0;
   background: transparent;
-  padding: 3px 6px;
-  border-radius: 4px;
+  padding: 1px 6px;
+  border-radius: 2px;
   text-align: left;
   font: inherit;
 }
@@ -423,12 +466,10 @@ select.pill-btn {
 
 .order-list .pat {
   color: var(--c-inst);
-  font-weight: 700;
 }
 
 .inst-list .idx {
   color: var(--c-inst);
-  font-weight: 700;
 }
 
 .inst-list .name {
@@ -437,10 +478,11 @@ select.pill-btn {
   white-space: nowrap;
 }
 
+/* Selected like a Game Boy menu entry: inverted pixels. */
 .order-list button[aria-current='true'],
 .inst-list button[aria-current='true'] {
-  background: var(--accent);
-  color: var(--accent-ink);
+  background: var(--lcd-sel);
+  color: var(--lcd-sel-ink);
 }
 
 .order-list button[aria-current='true'] span,
@@ -462,17 +504,71 @@ select.pill-btn {
 .mini-btns button {
   flex: 1;
   border: 0;
-  border-radius: 4px;
-  background: var(--surface-2);
-  padding: 4px 2px;
-  font: 700 11px var(--mono);
+  border-radius: 999px;
+  background: var(--pill);
+  color: var(--pill-ink);
+  padding: 5px 2px 4px;
+  font: 400 10px var(--pixel);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 2px 0 var(--pill-lo);
+}
+
+.mini-btns button:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 var(--pill-lo);
 }
 
 /* ---------------------------------------------------------------- pattern */
 
 .editor {
   overflow: hidden;
-  --pat-font: clamp(12px, 0.45vw + 7px, 17px);
+  /* VT323 is narrow and small for its size, so the pattern font runs larger than a system mono. */
+  --pat-font: clamp(17px, 0.6vw + 10px, 24px);
+}
+
+/* The screen bezel: slate glass frame with the two stripes and the rounded bottom-right corner. */
+.screen {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 8px 8px 0;
+  padding: 0 12px 14px;
+  border-radius: 8px 8px 40px 8px;
+  background: var(--bezel);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), inset 0 -2px 0 var(--bezel-lo);
+}
+
+.screen-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 20px;
+  flex: none;
+  overflow: hidden;
+  color: var(--bezel-ink);
+  font: 400 10px var(--pixel);
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+}
+
+.screen-label::before,
+.screen-label::after {
+  content: '';
+  flex: 0 0 18px;
+  height: 5px;
+  background: linear-gradient(var(--stripe-a) 0 2px, transparent 2px 3px, var(--stripe-b) 3px 5px);
+}
+
+.screen-label::after {
+  flex: 1 0 18px;
+}
+
+.screen > .chan-head {
+  border-radius: 3px 3px 0 0;
+}
+
+.screen > .pattern {
+  border-radius: 0 0 3px 3px;
 }
 
 .chan-head,
@@ -483,9 +579,10 @@ select.pill-btn {
 }
 
 .chan-head {
-  font: 700 var(--pat-font) / 1.2 var(--mono);
-  background: var(--surface);
-  border-bottom: 2px solid var(--line);
+  font: var(--pat-font) / 1.1 var(--mono);
+  background: var(--pat-bg);
+  color: var(--lcd-text);
+  border-bottom: 2px solid var(--pat-line);
   overflow: hidden;
   flex: none;
 }
@@ -495,7 +592,7 @@ select.pill-btn {
 }
 
 .chan {
-  border-left: 1px solid var(--line);
+  border-left: 1px solid var(--pat-line);
   padding: 4px 6px;
   display: flex;
   flex-direction: column;
@@ -520,17 +617,16 @@ select.pill-btn {
 }
 
 .chan-title .kind {
-  color: var(--ink-soft);
-  font-weight: 400;
+  color: var(--lcd-soft);
 }
 
 .chan .mute {
-  border: 1px solid var(--line);
+  border: 1px solid var(--lcd-soft);
   background: transparent;
-  border-radius: 4px;
-  font: 700 10px var(--mono);
-  padding: 1px 5px;
-  color: var(--ink-soft);
+  border-radius: 2px;
+  font: 400 10px var(--pixel);
+  padding: 2px 4px 1px;
+  color: var(--lcd-soft);
 }
 
 .chan.muted .mute {
@@ -552,7 +648,7 @@ select.pill-btn {
   height: clamp(28px, 6vh, 56px);
   display: block;
   background: var(--lcd-bg);
-  border-radius: 3px;
+  border-radius: 2px;
 }
 
 .pattern {
@@ -560,7 +656,8 @@ select.pill-btn {
   min-height: 0;
   overflow: auto;
   background: var(--pat-bg);
-  font: var(--pat-font) / 1.45 var(--mono);
+  font: var(--pat-font) / 1.15 var(--mono);
+  color: var(--lcd-text);
   white-space: pre;
   outline: none;
   overscroll-behavior: contain;
@@ -599,12 +696,11 @@ select.pill-btn {
 }
 
 .prow.bar .num {
-  color: var(--ink);
-  font-weight: 700;
+  color: var(--lcd-text);
 }
 
 .cell {
-  border-left: 1px solid var(--line);
+  border-left: 1px solid var(--pat-line);
   padding: 0 0.6ch;
 }
 
@@ -619,7 +715,6 @@ select.pill-btn {
 
 .f0 {
   color: var(--c-note);
-  font-weight: 700;
   margin-right: 0.6ch;
 }
 
@@ -638,7 +733,6 @@ select.pill-btn {
 
 .f3 {
   color: var(--c-fx);
-  font-weight: 700;
 }
 
 .f4,
@@ -648,13 +742,12 @@ select.pill-btn {
 
 .cell .empty {
   color: var(--c-empty);
-  font-weight: 400;
 }
 
 .cell .cursor {
   background: var(--accent);
   color: var(--accent-ink) !important;
-  border-radius: 2px;
+  border-radius: 1px;
 }
 
 /* ----------------------------------------------------------------- piano */
@@ -670,7 +763,6 @@ select.pill-btn {
   height: 76px;
   margin: 0 6px;
   padding: 6px 0 4px;
-  border-top: 1px solid var(--line);
   flex: none;
   touch-action: none;
   user-select: none;
@@ -683,7 +775,7 @@ select.pill-btn {
 .pkey {
   border: 0;
   padding: 0;
-  font: 700 10px var(--mono);
+  font: 400 10px var(--pixel);
 }
 
 .pkey.white {
@@ -742,7 +834,6 @@ select.pill-btn {
   display: none;
   gap: 4px;
   padding: 6px;
-  border-top: 1px solid var(--line);
   flex: none;
 }
 
@@ -757,15 +848,18 @@ select.pill-btn {
   gap: 4px;
 }
 
+/* Keypad keys: dark D-pad rubber, grey Start/Select pills, red A/B. */
 .key {
   flex: 1;
   min-width: 0;
   height: 38px;
   border: 0;
   border-radius: 6px;
-  background: var(--field);
-  box-shadow: 0 2px 0 var(--line);
-  font: 700 13px var(--mono);
+  background: var(--dpad);
+  color: var(--dpad-ink);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 3px 0 var(--dpad-lo);
+  font: 400 10px var(--pixel);
+  letter-spacing: 0.08em;
   touch-action: manipulation;
   user-select: none;
   padding: 0;
@@ -779,15 +873,19 @@ select.pill-btn {
 .key.action {
   background: var(--pill);
   color: var(--pill-ink);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 3px 0 var(--pill-lo);
 }
 
 .key.red {
   background: var(--accent);
   color: var(--accent-ink);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 3px 0 var(--accent-lo);
 }
 
 .key:active {
-  transform: translateY(2px);
+  transform: translateY(3px);
   box-shadow: none;
 }
 
@@ -808,16 +906,18 @@ select.pill-btn {
   flex: 1;
   border: 0;
   border-radius: 999px;
-  padding: 6px 2px;
-  background: var(--surface-2);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
+  padding: 7px 2px 6px;
+  background: var(--pill);
+  color: var(--pill-ink);
+  font: 400 10px var(--pixel);
+  letter-spacing: 0.1em;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 2px 0 var(--pill-lo);
 }
 
 .tabs button[aria-selected='true'] {
   background: var(--accent);
   color: var(--accent-ink);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 2px 0 var(--accent-lo);
 }
 
 .panel h2 {
@@ -846,9 +946,10 @@ select.pill-btn {
   width: 100%;
   min-width: 0;
   padding: 6px 8px;
-  border-radius: 6px;
+  border-radius: 4px;
   border: 1px solid var(--line);
   background: var(--field);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.12);
 }
 
 .form input[type='range'] {
@@ -858,7 +959,7 @@ select.pill-btn {
 
 .form output {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 18px;
   margin-left: 6px;
   min-width: 3ch;
 }
@@ -878,11 +979,17 @@ select.pill-btn {
 .btn {
   border: 0;
   border-radius: 999px;
-  padding: 7px 12px;
+  padding: 8px 12px 7px;
   background: var(--pill);
   color: var(--pill-ink);
-  font-size: 12px;
-  font-weight: 700;
+  font: 400 10px var(--pixel);
+  letter-spacing: 0.1em;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 2px 0 var(--pill-lo);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 var(--pill-lo);
 }
 
 a.btn {
@@ -893,6 +1000,11 @@ a.btn {
 .btn.primary {
   background: var(--accent);
   color: var(--accent-ink);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 2px 0 var(--accent-lo);
+}
+
+.btn.primary:active:not(:disabled) {
+  box-shadow: 0 1px 0 var(--accent-lo);
 }
 
 .btn:disabled {
@@ -910,9 +1022,9 @@ a.btn {
 .seg button {
   border: 0;
   background: transparent;
-  padding: 5px 10px;
-  font-size: 12px;
-  font-weight: 700;
+  padding: 7px 10px 6px;
+  font: 400 10px var(--pixel);
+  letter-spacing: 0.1em;
 }
 
 .seg button[aria-pressed='true'] {
@@ -929,21 +1041,25 @@ a.btn {
 .inst-grid button {
   border: 0;
   border-radius: 4px;
-  padding: 6px 0;
-  background: var(--surface-2);
-  font: 700 12px var(--mono);
+  padding: 3px 0;
+  background: var(--dpad);
+  color: var(--dpad-ink);
+  font: 18px / 1 var(--mono);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 2px 0 var(--dpad-lo);
 }
 
 .inst-grid button[aria-pressed='true'] {
   background: var(--accent);
   color: var(--accent-ink);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 2px 0 var(--accent-lo);
 }
 
 .wave-canvas {
   width: 100%;
   aspect-ratio: 2 / 1;
   background: var(--lcd-bg);
-  border-radius: 4px;
+  border: 6px solid var(--bezel);
+  border-radius: 6px 6px 18px 6px;
   touch-action: none;
   cursor: crosshair;
   display: block;
@@ -968,8 +1084,7 @@ a.btn {
 }
 
 .help-table td:first-child {
-  font-family: var(--mono);
-  font-weight: 700;
+  font: 17px var(--mono);
   white-space: nowrap;
   color: var(--c-fx);
 }
@@ -978,19 +1093,24 @@ a.btn {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 12px;
-  font: 700 12px var(--mono);
+  padding: 4px 8px;
+  border-radius: 3px;
+  background: var(--pat-bg);
+  font: 18px var(--mono);
 }
 
+/* Toasts read like a line of text on the LCD. */
 .toast {
   position: fixed;
   left: 50%;
   bottom: 72px;
   transform: translateX(-50%);
-  background: var(--ink);
-  color: var(--surface);
-  padding: 8px 16px;
-  border-radius: 999px;
-  font-size: 13px;
+  background: var(--lcd-3);
+  color: var(--lcd-0);
+  border: 3px solid var(--bezel);
+  padding: 6px 14px;
+  border-radius: 4px;
+  font: 20px / 1.1 var(--mono);
   opacity: 0;
   transition: opacity 0.2s;
   pointer-events: none;
@@ -1092,12 +1212,22 @@ a.btn {
     display: none;
   }
 
+  .screen {
+    margin: 6px 6px 0;
+    padding: 0 6px 8px;
+    border-radius: 6px 6px 28px 6px;
+  }
+
+  .screen-label {
+    height: 16px;
+  }
+
   .mobile-nav {
     display: flex;
     gap: 6px;
-    padding: 6px;
+    padding: 6px 6px 8px;
     background: var(--surface);
-    border-top: 1px solid var(--line);
+    box-shadow: inset 0 1px 0 var(--emboss), 0 -1px 0 rgb(0 0 0 / 0.1);
     flex: none;
   }
 
@@ -1105,16 +1235,18 @@ a.btn {
     flex: 1;
     border: 0;
     border-radius: 999px;
-    padding: 8px;
-    background: var(--surface-2);
-    font-size: 12px;
-    font-weight: 800;
-    letter-spacing: 0.06em;
+    padding: 10px 4px 9px;
+    background: var(--pill);
+    color: var(--pill-ink);
+    font: 400 10px var(--pixel);
+    letter-spacing: 0.08em;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 2px 0 var(--pill-lo);
   }
 
   .mobile-nav button[aria-current='true'] {
     background: var(--accent);
     color: var(--accent-ink);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 2px 0 var(--accent-lo);
   }
 }
 
@@ -1123,27 +1255,27 @@ a.btn {
   .editor {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(200px, 38%);
-    grid-template-rows: auto auto minmax(0, 1fr);
     grid-template-areas:
-      'head piano'
-      'pat piano'
-      'pat keys';
+      'screen piano'
+      'screen keys';
+    grid-template-rows: auto minmax(0, 1fr);
     gap: 0;
   }
 
-  .chan-head {
-    grid-area: head;
+  .screen {
+    grid-area: screen;
+    margin: 4px;
+    padding: 4px 4px 6px;
+    border-radius: 6px 6px 20px 6px;
   }
 
-  .pattern {
-    grid-area: pat;
+  .screen-label {
+    display: none;
   }
 
   .piano {
     grid-area: piano;
     height: 72px;
-    border-top: 0;
-    border-left: 1px solid var(--line);
     margin: 0;
     padding: 6px;
   }
@@ -1152,8 +1284,6 @@ a.btn {
     grid-area: keys;
     align-content: start;
     overflow: auto;
-    border-top: 0;
-    border-left: 1px solid var(--line);
   }
 
   .key {
@@ -1193,6 +1323,16 @@ a.btn {
 
   .key {
     height: 32px;
+  }
+
+  .screen {
+    margin: 4px 4px 0;
+    padding: 4px 4px 6px;
+    border-radius: 6px 6px 20px 6px;
+  }
+
+  .screen-label {
+    display: none;
   }
 
   .chan canvas {
@@ -1325,7 +1465,7 @@ a.btn {
 .sample-num,
 .sample-len {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 18px;
 }
 
 .sample-len {
@@ -1334,16 +1474,19 @@ a.btn {
 }
 
 /* About dialog with the mini game */
+/* Dialogs are a little DMG: case plastic, the two stripes on top, the rounded bottom-right corner. */
 .about {
   width: min(420px, calc(100vw - 16px));
   max-height: calc(100dvh - 16px);
   overflow: auto;
-  padding: 14px 16px 16px;
+  padding: 16px 16px 18px;
   border: 0;
-  border-radius: 12px;
-  background: var(--surface);
+  border-radius: 10px 10px 36px 10px;
+  background:
+    linear-gradient(var(--stripe-a) 0 3px, transparent 3px 5px, var(--stripe-b) 5px 8px) top / 100% 8px no-repeat,
+    var(--surface);
   color: var(--ink);
-  box-shadow: 0 10px 40px rgb(0 0 0 / 35%);
+  box-shadow: inset 0 -3px 0 rgb(0 0 0 / 0.12), 0 10px 40px rgb(0 0 0 / 35%);
 }
 
 .about::backdrop {
@@ -1352,9 +1495,10 @@ a.btn {
 
 .about h2 {
   margin: 0;
-  color: var(--accent);
-  font-size: 18px;
-  letter-spacing: 0.08em;
+  color: var(--navy);
+  font: 400 16px var(--pixel);
+  letter-spacing: 0.06em;
+  text-shadow: 0 1px 0 var(--emboss);
 }
 
 .about p {
@@ -1369,6 +1513,7 @@ a.btn {
 
 .about-version {
   font-family: var(--mono);
+  font-size: 18px;
   color: var(--ink-soft);
 }
 
@@ -1381,16 +1526,15 @@ a.btn {
   margin-top: 12px;
   padding: 10px;
   border-radius: 8px 8px 28px 8px;
-  background: var(--pill);
+  background: var(--bezel);
 }
 
 .about-score {
   display: flex;
   justify-content: space-between;
-  font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--pill-ink);
+  font: 400 10px var(--pixel);
+  letter-spacing: 0.1em;
+  color: var(--bezel-ink);
   margin-bottom: 6px;
 }
 
@@ -1420,7 +1564,7 @@ a.btn {
 .about-pad .hint {
   flex: 1;
   margin: 0;
-  color: var(--pill-ink);
+  color: var(--bezel-ink);
   font-size: 12px;
 }
 
@@ -1432,13 +1576,15 @@ a.btn {
   border-radius: 50%;
   background: var(--accent);
   color: var(--accent-ink);
-  font-weight: 800;
-  font-size: 18px;
+  font: 400 16px var(--pixel);
+  box-shadow: inset 0 2px 0 rgb(255 255 255 / 0.25), 0 3px 0 var(--accent-lo);
   touch-action: manipulation;
 }
 
 .about-a:active {
   background: var(--accent-hi);
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--accent-lo);
 }
 
 /* ------------------------------------------------------------------ undo */
@@ -1451,7 +1597,7 @@ a.btn {
 .undo-btns .pill-btn {
   min-width: 34px;
   padding-inline: 8px;
-  font-size: 15px;
+  font: 15px / 1 var(--sans);
 }
 
 .pill-btn:disabled {
@@ -1474,7 +1620,8 @@ a.btn {
 
 .macro input[type='text'] {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 18px;
+  padding-block: 3px;
 }
 
 .macro-graph:empty {

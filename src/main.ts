@@ -1,3 +1,6 @@
+import '@fontsource/silkscreen/400.css';
+import '@fontsource/silkscreen/700.css';
+import '@fontsource/vt323/400.css';
 import './style.css';
 import { AudioClient } from './audio/client';
 import { sampleFromAudio, toMono, waveFromAudio } from './audio/import';
@@ -256,8 +259,11 @@ app.innerHTML = `
       </section>
     </aside>
     <main class="editor" data-i18n-aria-label="layout.editor">
-      <div class="chan-head" id="chan-head"></div>
-      <div class="pattern" id="pattern" tabindex="0" role="grid" data-i18n-aria-label="layout.pattern"></div>
+      <div class="screen">
+        <div class="screen-label" aria-hidden="true">DOT MATRIX TRACKER WITH STEREO SOUND</div>
+        <div class="chan-head" id="chan-head"></div>
+        <div class="pattern" id="pattern" tabindex="0" role="grid" data-i18n-aria-label="layout.pattern"></div>
+      </div>
       <div class="piano" id="piano" data-i18n-aria-label="piano.label"></div>
       <div class="keypad" id="keypad"></div>
     </main>

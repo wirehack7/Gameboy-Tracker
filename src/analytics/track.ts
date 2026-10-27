@@ -1,19 +1,17 @@
-type EventData = Record<string, string | number | boolean>;
+export type TrackData = Record<string, string | number | boolean>;
 
-declare global {
-  interface Window {
-    umami?: { track(event: string, data?: EventData): void };
-  }
-}
+/** The window event that carries every tracked action, see track(). */
+export const TRACK_EVENT = 'gb-tracker:track';
 
 /**
- * Sends a custom event to Umami. Does nothing when the tracker is not loaded
- * (local builds, Do Not Track, blockers, offline) and never throws.
+ * Reports a user action as a `gb-tracker:track` window event with
+ * `{ name, data }` as its detail. The tracker itself sends nothing anywhere:
+ * an analytics snippet added at build time (see src/analytics/plugin.ts) can
+ * listen for these events and forward them. Never throws.
  */
-export function track(event: string, data?: EventData) {
+export function track(name: string, data?: TrackData) {
   try {
-    const umami = typeof window === 'undefined' ? undefined : window.umami;
-    if (typeof umami?.track === 'function') umami.track(event, data);
+    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(TRACK_EVENT, { detail: { name, data } }));
   } catch {
     // Analytics must never break the tracker.
   }

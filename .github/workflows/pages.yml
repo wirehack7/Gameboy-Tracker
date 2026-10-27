@@ -27,10 +27,9 @@ jobs:
       - run: npm test
       - run: npm run build
         env:
-          # Umami analytics, only on the live site: set both as repository variables
-          # (Settings > Secrets and variables > Actions > Variables). Unset = no tracking.
-          UMAMI_HOST: ${{ vars.UMAMI_HOST }}
-          UMAMI_WEBSITE_ID: ${{ vars.UMAMI_WEBSITE_ID }}
+          # Analytics snippet (raw HTML) of the live site, from the repository variable
+          # TRACKING_CODE (Settings > Secrets and variables > Actions > Variables). Unset = no tracking.
+          TRACKING_CODE: ${{ vars.TRACKING_CODE }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

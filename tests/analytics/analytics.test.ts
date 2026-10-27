@@ -1,55 +1,65 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { analytics, analyticsConfig, analyticsLoader } from '../../src/analytics/plugin';
-import { track } from '../../src/analytics/track';
+import { analytics, trackingCode, trackingLoader } from '../../src/analytics/plugin';
+import { TRACK_EVENT, track } from '../../src/analytics/track';
 
-const ID = '00000000-1111-2222-3333-444444444444';
+const SNIPPET =
+  '<script defer src="https://stats.example/a.js" data-site="x"></script>\n<script>window.ok = 1;</script>';
 
-describe('analytics config', () => {
-  it('is off unless both variables are set', () => {
-    expect(analyticsConfig({})).toBeNull();
-    expect(analyticsConfig({ UMAMI_HOST: 'https://umami.example' })).toBeNull();
-    expect(analyticsConfig({ UMAMI_WEBSITE_ID: ID })).toBeNull();
-    expect(analyticsConfig({ UMAMI_HOST: '', UMAMI_WEBSITE_ID: '' })).toBeNull();
+describe('tracking code', () => {
+  it('is off unless the variable is set', () => {
+    expect(trackingCode({})).toBeNull();
+    expect(trackingCode({ TRACKING_CODE: '  \n' })).toBeNull();
+    expect(trackingCode({ TRACKING_CODE: ` ${SNIPPET}\n` })).toBe(SNIPPET);
   });
 
-  it('normalises the host', () => {
-    expect(analyticsConfig({ UMAMI_HOST: 'https://umami.example/', UMAMI_WEBSITE_ID: ID })).toEqual({
-      host: 'https://umami.example',
-      websiteId: ID,
-    });
-    expect(analyticsConfig({ UMAMI_HOST: ' umami.example ', UMAMI_WEBSITE_ID: ` ${ID}\n` })?.host).toBe(
-      'https://umami.example',
-    );
-  });
-
-  it('rejects an id that could break out of the script', () => {
-    expect(() => analyticsConfig({ UMAMI_HOST: 'umami.example', UMAMI_WEBSITE_ID: '"></script>' })).toThrow();
+  it('is injected only when set', () => {
+    const tags = (p: ReturnType<typeof analytics>) => (p.transformIndexHtml as unknown as () => { children: string }[])();
+    expect(tags(analytics(null))).toEqual([]);
+    const [tag, ...rest] = tags(analytics(SNIPPET));
+    expect(rest).toEqual([]);
+    // The snippet's own </script> must not close the inline loader.
+    expect(tag.children).not.toMatch(/<\/script/i);
   });
 });
 
-describe('analytics loader', () => {
-  const config = { host: 'https://umami.example', websiteId: ID };
-
+describe('tracking loader', () => {
+  /** Runs the loader against a minimal DOM that parses the snippet's script tags. */
   function run(nav: Record<string, unknown>) {
-    const added: { src: string; id: string | null; defer: boolean }[] = [];
-    const document = {
-      createElement: () => {
-        const attrs: Record<string, string> = {};
-        return { defer: false, src: '', setAttribute: (k: string, v: string) => (attrs[k] = v), attrs };
-      },
-      head: {
-        appendChild: (s: { src: string; defer: boolean; attrs: Record<string, string> }) =>
-          added.push({ src: s.src, id: s.attrs['data-website-id'] ?? null, defer: s.defer }),
-      },
+    const added: { attrs: Record<string, string>; text: string }[] = [];
+    const script = () => {
+      const attrs: Record<string, string> = {};
+      return { nodeType: 1, tagName: 'SCRIPT', text: '', attrs, setAttribute: (k: string, v: string) => (attrs[k] = v) };
     };
-    new Function('navigator', 'window', 'document', analyticsLoader(config))(nav, {}, document);
+    const document = {
+      createElement: (tag: string) => {
+        if (tag === 'script') return script();
+        const t = {
+          content: { childNodes: [] as unknown[] },
+          set innerHTML(html: string) {
+            for (const m of html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)) {
+              const el = script();
+              for (const a of m[1].matchAll(/([\w-]+)(?:="([^"]*)")?/g)) el.attrs[a[1]] = a[2] ?? '';
+              el.text = m[2];
+              t.content.childNodes.push({
+                ...el,
+                attributes: Object.entries(el.attrs).map(([name, value]) => ({ name, value })),
+              });
+            }
+          },
+        };
+        return t;
+      },
+      importNode: (n: unknown) => n,
+      head: { appendChild: (s: { attrs: Record<string, string>; text: string }) => added.push({ attrs: s.attrs, text: s.text }) },
+    };
+    new Function('navigator', 'window', 'document', trackingLoader(SNIPPET))(nav, {}, document);
     return added;
   }
 
-  it('adds the tracker and the recorder', () => {
+  it('adds the snippet scripts with their attributes', () => {
     expect(run({})).toEqual([
-      { src: 'https://umami.example/script.js', id: ID, defer: true },
-      { src: 'https://umami.example/recorder.js', id: ID, defer: true },
+      { attrs: { defer: '', src: 'https://stats.example/a.js', 'data-site': 'x' }, text: '' },
+      { attrs: {}, text: 'window.ok = 1;' },
     ]);
   });
 
@@ -58,35 +68,25 @@ describe('analytics loader', () => {
     expect(run({ globalPrivacyControl: true })).toEqual([]);
     expect(run({ doNotTrack: '0' })).toHaveLength(2);
   });
-
-  it('is injected only when configured', () => {
-    const html = (p: ReturnType<typeof analytics>) =>
-      (p.transformIndexHtml as unknown as () => { children: string }[])();
-    expect(html(analytics(null))).toEqual([]);
-    const tags = html(analytics(config));
-    expect(tags).toHaveLength(1);
-    expect(tags[0].children).toContain(ID);
-  });
 });
 
 describe('track', () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it('is a no-op without Umami', () => {
-    vi.stubGlobal('window', {});
-    expect(() => track('play')).not.toThrow();
+  it('dispatches a window event', () => {
+    const target = new EventTarget();
+    const seen: unknown[] = [];
+    target.addEventListener(TRACK_EVENT, (e) => seen.push((e as CustomEvent).detail));
+    vi.stubGlobal('window', target);
+    track('export', { format: 'xm' });
+    track('stop');
+    expect(seen).toEqual([{ name: 'export', data: { format: 'xm' } }, { name: 'stop', data: undefined }]);
   });
 
-  it('forwards events and swallows errors', () => {
-    const calls: unknown[] = [];
-    vi.stubGlobal('window', { umami: { track: (...a: unknown[]) => calls.push(a) } });
-    track('export', { format: 'xm' });
-    expect(calls).toEqual([['export', { format: 'xm' }]]);
+  it('never throws', () => {
     vi.stubGlobal('window', {
-      umami: {
-        track: () => {
-          throw new Error('blocked');
-        },
+      dispatchEvent: () => {
+        throw new Error('blocked');
       },
     });
     expect(() => track('play')).not.toThrow();

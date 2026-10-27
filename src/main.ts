@@ -1996,6 +1996,6 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 }
 addEventListener('appinstalled', () => track('pwa-install'));
 if (matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone) {
-  // Umami loads deferred, after this module; report the launch once it is there.
+  // Analytics scripts load deferred, after this module; report the launch once they are there.
   addEventListener('load', () => track('pwa-launch'));
 }

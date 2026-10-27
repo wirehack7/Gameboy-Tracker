@@ -99,15 +99,25 @@ manual, so update it in the same PR as the feature.
 
 ### Analytics
 
-The live site counts visits and a few anonymous actions with [Umami](https://umami.is) (play/stop, exports by
-format, import, library actions, theme and language, piano/MIDI, About game, PWA install and launch). The
-tracker (`script.js`) and Umami's session recorder (`recorder.js`) are only added at build time by the Pages
-workflow, from the repository variables `UMAMI_HOST` (e.g. `https://umami.example.com`) and `UMAMI_WEBSITE_ID`
-(Settings > Secrets and variables > Actions > Variables). Without them, as in local, dev and CI builds and
-forks, the site contains no tracking (`src/analytics/plugin.ts`). Browsers that send Do Not Track or Global
-Privacy Control load neither script. Events go through `track()` in `src/analytics/track.ts`, which does
-nothing when Umami is not loaded. The service worker only handles requests inside the site's own scope, so the
-Umami scripts are never cached for offline use.
+The repository contains no analytics. A deployment can add its own snippet at build time: the Pages workflow
+passes the repository variable `TRACKING_CODE` (raw HTML, e.g. the `<script>` tags of your analytics service;
+Settings > Secrets and variables > Actions > Variables) to the build, which adds it to every page
+(`src/analytics/plugin.ts`). Without it, as in local, dev and CI builds and forks, nothing is added. Browsers
+that send Do Not Track or Global Privacy Control don't load the snippet.
+
+The tracker reports user actions as `gb-tracker:track` window events with `{ name, data }` as their detail
+(`src/analytics/track.ts`): `play` (`mode`), `stop`, `export` (`format`), `import`, `song-new`, `song-demo`,
+`song-save`, `song-save-as`, `library` (`action`), `theme`, `language`, `piano`, `midi`, `about`, `about-game`
+(`score`), `pwa-install` and `pwa-launch`. To forward them, add a listener to the snippet, for example:
+
+```html
+<script>
+  addEventListener('gb-tracker:track', (e) => window.myAnalytics?.track(e.detail.name, e.detail.data));
+</script>
+```
+
+The service worker only handles requests inside the site's own scope, so external analytics scripts are never
+cached for offline use.
 
 ## Hardware coverage
 

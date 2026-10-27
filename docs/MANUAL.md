@@ -600,6 +600,12 @@ unsaved changes the FILE tab shows a dot.
 New, Load demo, opening a library song and importing a single file ask first when the song you are editing has
 unsaved changes.
 
+Questions like these open a small dialog inside the tracker. The red button on the right does the action (it is
+named after it: **Discard**, **Delete**, **Rename**, …); **Cancel**, `Esc` or a tap outside the dialog leave
+everything as it was. Where a title is asked for, type it and press `Enter` or the red button.
+
+![The rename dialog on a phone](images/dialog-phone.png)
+
 ### The library list
 
 Tap or click a song's title to open it. The song you are editing is marked with a coloured bar. The buttons

@@ -271,4 +271,13 @@ export const es: Translation = {
   'help.fx.D': 'Corte de patrón, continuar en la fila xx',
   'help.fx.E': 'Cortar la nota tras xx ticks',
   'help.fx.F': 'Velocidad (ticks por fila)',
+  // in-app confirm / prompt dialogs
+  'dialog.ok': 'Aceptar',
+  'dialog.cancel': 'Cancelar',
+  'dialog.delete': 'Borrar',
+  'dialog.discard': 'Descartar',
+  'dialog.clear': 'Vaciar',
+  'dialog.replace': 'Reemplazar',
+  'dialog.save': 'Guardar',
+  'dialog.rename': 'Renombrar',
 };

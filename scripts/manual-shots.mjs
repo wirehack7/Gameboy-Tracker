@@ -1,4 +1,4 @@
-// Renders the manual screenshots docs/images/layout-desktop-light.png and layout-phone.png.
+// Renders the manual screenshots docs/images/layout-desktop-light.png, layout-phone.png and dialog-phone.png.
 // Usage: npm run build && npx vite preview --port 4173 & node scripts/manual-shots.mjs http://localhost:4173/
 import { chromium, devices } from 'playwright';
 import { fileURLToPath } from 'node:url';
@@ -25,5 +25,17 @@ await page.goto(url);
 await page.waitForSelector('#play-song');
 await page.waitForTimeout(500);
 await page.screenshot({ path: `${dir}/layout-phone.png` });
+
+// The in-app question dialog: save the demo, then rename it from the library list.
+await page.locator('.mobile-nav [data-view="edit"]').tap();
+await page.locator('[data-tab="file"]').tap();
+await page.locator('#f-store').tap();
+await page.locator('#toast:not(.show)').waitFor({ timeout: 5000 });
+await page.waitForTimeout(400);
+await page.locator('#lib-list [data-act="rename"]').first().tap();
+await page.locator('dialog#ask #ask-input').fill('Demo');
+await page.locator('dialog#ask #ask-input').press('End');
+await page.waitForTimeout(300);
+await page.screenshot({ path: `${dir}/dialog-phone.png` });
 await browser.close();
-console.log(`wrote ${dir}/layout-desktop-light.png, layout-phone.png`);
+console.log(`wrote ${dir}/layout-desktop-light.png, layout-phone.png, dialog-phone.png`);

@@ -13,7 +13,9 @@
  * - undo/redo, block selection (keys and mouse), copy/paste and transpose change the pattern as expected;
  * - instrument macros can be typed, show as bars, are saved, and the instrument panel fits a phone;
  * - the song library saves (button and Ctrl+S), saves as, renames, duplicates, deletes and opens songs,
- *   keeps them across a reload (IndexedDB), and its ZIP backup imports again;
+ *   keeps them across a reload (IndexedDB), and its ZIP backup imports again; its questions use the in-app
+ *   dialog (Cancel / Esc keep the song, Enter confirms), and no native dialog ever opens;
+ * - the in-app dialog fits every screen size and Clear only clears the pattern after OK;
  * - every export (song JSON, WAV, FLAC, stems, VGM, GBS, ROM, XM, MOD, GBDK zip) hands over a file with the right
  *   header;
  * - the Opus and video exports hand over Ogg Opus and WebM files (checked with ffprobe when installed),
@@ -88,6 +90,11 @@ async function open(screen, { locale = 'en-US', path = '', ready = '#pattern .pr
   const unload = /Navigated away from page/;
   page.on('pageerror', (e) => unload.test(e.message) || errors.push(e.message));
   page.on('console', (m) => m.type() === 'error' && !unload.test(m.text()) && errors.push(m.text()));
+  // Questions use the in-app dialog; a native alert / confirm / prompt is a bug.
+  page.on('dialog', (d) => {
+    errors.push(`native ${d.type()} dialog: ${d.message()}`);
+    void d.dismiss();
+  });
   await page.goto(base + path, { waitUntil: 'load' });
   await page.waitForSelector(ready);
   return { context, page, errors };
@@ -435,7 +442,14 @@ await check('song library saves, renames, duplicates, deletes and backs up songs
     const titles = () => page.$$eval('#lib-list .lib-title', (els) => els.map((e) => e.textContent).sort());
     const state = () => page.locator('#f-state').getAttribute('data-state');
     const row = (title) => rows().filter({ has: page.locator('.lib-title', { hasText: new RegExp(`^${title}$`) }) });
-    const answer = (text) => page.once('dialog', (d) => d.accept(text));
+    // Answers the in-app dialog: types `text` into its field (if given) and confirms.
+    const answer = async (text) => {
+      const dialog = page.locator('dialog#ask');
+      await dialog.waitFor({ state: 'visible' });
+      if (text !== undefined) await dialog.locator('#ask-input').fill(text);
+      await dialog.locator('#ask-ok').click();
+      await dialog.waitFor({ state: 'detached' });
+    };
 
     await page.locator('.tabs [data-tab="file"]').click();
     await page.waitForSelector('#lib-list .hint, #lib-list .lib-row');
@@ -454,18 +468,31 @@ await check('song library saves, renames, duplicates, deletes and backs up songs
     await page.locator('.tabs [data-tab="file"]').click();
     assert((await titles()).join() === 'Smoke song', `library holds ${(await titles()).join(', ')}`);
 
-    answer('Second');
     await page.locator('#f-saveas').click();
+    await answer('Second');
     await rows().nth(1).waitFor();
     assert((await row('Second').getAttribute('aria-current')) === 'true', 'Save as did not switch to the copy');
 
-    answer('Renamed');
+    // Cancel and Esc leave the song alone; Enter in the field confirms.
     await row('Smoke song').locator('[data-act="rename"]').click();
+    await page.locator('dialog#ask #ask-input').fill('Nope');
+    await page.locator('dialog#ask #ask-cancel').click();
+    await page.locator('dialog#ask').waitFor({ state: 'detached' });
+    await row('Smoke song').locator('[data-act="delete"]').click();
+    await page.locator('dialog#ask').waitFor({ state: 'visible' });
+    const rec = await page.locator('#rec').getAttribute('aria-pressed');
+    await page.keyboard.press('Escape');
+    await page.locator('dialog#ask').waitFor({ state: 'detached' });
+    assert((await page.locator('#rec').getAttribute('aria-pressed')) === rec, 'Esc in the dialog toggled record mode');
+    assert((await titles()).join() === 'Second,Smoke song', `after cancelling: ${(await titles()).join(', ')}`);
+    await row('Smoke song').locator('[data-act="rename"]').click();
+    await page.locator('dialog#ask #ask-input').fill('Renamed');
+    await page.locator('dialog#ask #ask-input').press('Enter');
     await row('Renamed').waitFor();
     await row('Renamed').locator('[data-act="duplicate"]').click();
     await row('Renamed \\(copy\\)').waitFor();
-    answer();
     await row('Renamed \\(copy\\)').locator('[data-act="delete"]').click();
+    await answer();
     await row('Renamed \\(copy\\)').waitFor({ state: 'detached' });
     assert((await titles()).join() === 'Renamed,Second', `library holds ${(await titles()).join(', ')}`);
 
@@ -487,6 +514,42 @@ await check('song library saves, renames, duplicates, deletes and backs up songs
     assert(errors.length === 0, `errors: ${errors.join(' | ')}`);
   } finally {
     await context.close();
+  }
+});
+
+await check('the in-app dialog fits every screen and Clear only clears after OK', async () => {
+  for (const screen of screens) {
+    const { context, page, errors } = await open(screen);
+    try {
+      const touch = screen.hasTouch;
+      const edit = page.locator('.mobile-nav [data-view="edit"]');
+      if (await edit.isVisible()) await press(page, edit, touch);
+      await press(page, page.locator('.tabs [data-tab="song"]'), touch);
+      const notes = () => page.$$eval('#pattern .prow .f0', (els) => els.filter((e) => /^[A-G]/.test(e.textContent)).length);
+      const before = await notes();
+      assert(before > 0, `${screen.name}: the demo pattern has no notes`);
+      const dialog = page.locator('dialog#ask');
+      await press(page, page.locator('#p-clear'), touch);
+      await dialog.waitFor({ state: 'visible' });
+      const { width, height } = page.viewportSize();
+      const box = await dialog.boundingBox();
+      assert(box.x >= 0 && box.x + box.width <= width + 1 && box.y >= 0 && box.y + box.height <= height + 1, `${screen.name}: the dialog does not fit`);
+      for (const id of ['ask-ok', 'ask-cancel']) {
+        const button = await dialog.locator(`#${id}`).boundingBox();
+        assert(button.height >= 36 && button.y + button.height <= height, `${screen.name}: #${id} is ${button.height}px high or off screen`);
+      }
+      if (shots) await page.screenshot({ path: join(shots, `${engine}-${screen.name}-dialog.png`) });
+      await press(page, dialog.locator('#ask-cancel'), touch);
+      await dialog.waitFor({ state: 'detached' });
+      assert((await notes()) === before, `${screen.name}: Cancel cleared the pattern`);
+      await press(page, page.locator('#p-clear'), touch);
+      await press(page, dialog.locator('#ask-ok'), touch);
+      await dialog.waitFor({ state: 'detached' });
+      assert((await notes()) === 0, `${screen.name}: OK left ${await notes()} notes`);
+      assert(errors.length === 0, `errors: ${errors.join(' | ')}`);
+    } finally {
+      await context.close();
+    }
   }
 });
 

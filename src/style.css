@@ -1473,9 +1473,10 @@ a.btn {
   text-align: right;
 }
 
-/* About dialog with the mini game */
-/* Dialogs are a little DMG: case plastic, the two stripes on top, the rounded bottom-right corner. */
-.about {
+/* About dialog with the mini game, and the confirm / prompt dialog.
+   Dialogs are a little DMG: case plastic, the two stripes on top, the rounded bottom-right corner. */
+.about,
+.ask {
   width: min(420px, calc(100vw - 16px));
   max-height: calc(100dvh - 16px);
   overflow: auto;
@@ -1489,7 +1490,8 @@ a.btn {
   box-shadow: inset 0 -3px 0 rgb(0 0 0 / 0.12), 0 10px 40px rgb(0 0 0 / 35%);
 }
 
-.about::backdrop {
+.about::backdrop,
+.ask::backdrop {
   background: rgb(0 0 0 / 45%);
 }
 
@@ -1639,4 +1641,45 @@ a.btn {
 
 .macro-bars .loop {
   fill: var(--accent);
+}
+
+/* In-app replacement for confirm() / prompt() */
+.ask {
+  width: min(380px, calc(100vw - 16px));
+  padding-top: 20px;
+}
+
+.ask form {
+  margin: 0;
+}
+
+.ask p {
+  margin: 0 0 12px;
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.ask input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  background: var(--field);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.12);
+  /* 16px keeps iOS from zooming in on focus. */
+  font-size: 16px;
+}
+
+.ask .btn-row {
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.ask .btn {
+  min-width: 88px;
+  min-height: 36px;
+  font-size: 11px;
 }

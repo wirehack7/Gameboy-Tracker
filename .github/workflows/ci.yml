@@ -19,10 +19,14 @@ jobs:
         run: |
           curl -sSL https://github.com/gbdk-2020/gbdk-2020/releases/download/4.3.0/gbdk-linux64.tar.gz | tar -xz -C "$RUNNER_TEMP"
           echo "GBDK_HOME=$RUNNER_TEMP/gbdk/" >> "$GITHUB_ENV"
+      - name: Install ffmpeg (decodes the FLAC export in the tests)
+        run: ffmpeg -version || (sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg)
       - run: npm test
         env:
           # Cross-check the XM/MOD exports with libopenmpt (the OpenMPT engine, via the chiptune3 package).
           OPENMPT: '1'
+          # Require the ffmpeg round trip of the FLAC export.
+          FFMPEG: '1'
       - run: npm run build
 
   browsers:

@@ -9,7 +9,9 @@ import { buildGbs, buildRom, romExtension } from './export/rom';
 import { encodeMod } from './export/mod';
 import { encodeXm } from './export/xm';
 import { encodeVgm } from './export/vgm';
-import { encodeWav, renderSong } from './export/wav';
+import { encodeFlac } from './export/flac';
+import { RenderOptions, encodeWav, renderSong, renderStems } from './export/wav';
+import { canEncode, exportOpus, exportVideo, themeColors } from './export/video';
 import { unzip, zip } from './export/zip';
 import { MidiInput, MidiStatus, midiToNote } from './input/midi';
 import { NOTE_COUNT } from './tracker/notes';
@@ -1394,6 +1396,10 @@ function renderFilePanel() {
     <div class="form">${slider('x-loops', t('export.loops'), 1, 1, 4)}</div>
     <div class="btn-row">
       <button type="button" class="btn primary" id="x-wav">${t('export.wav')}</button>
+      <button type="button" class="btn" id="x-flac">${t('export.flac')}</button>
+      <button type="button" class="btn" id="x-stems">${t('export.stems')}</button>
+      <button type="button" class="btn" id="x-opus">${t('export.opus')}</button>
+      <button type="button" class="btn" id="x-video">${t('export.video')}</button>
       <button type="button" class="btn" id="x-vgm">${t('export.vgm')}</button>
       <button type="button" class="btn" id="x-gbs">${t('export.gbs')}</button>
       <button type="button" class="btn" id="x-rom">${t('export.rom')}</button>
@@ -1434,21 +1440,64 @@ function renderFilePanel() {
   );
   $('f-backup').addEventListener('click', () => void backupLibrary());
   bindRange('x-loops', () => {});
-  $('x-wav').addEventListener('click', async () => {
-    const btn = $<HTMLButtonElement>('x-wav');
-    const status = $('x-status');
-    btn.disabled = true;
-    try {
-      const loops = Number($<HTMLInputElement>('x-loops').value);
-      const { left, right, sampleRate } = await renderSong(structuredClone(song), {
-        loops,
-        onProgress: (s) => (status.textContent = t('export.rendering', { seconds: num(s, 0) })),
-      });
-      download(`${fileBase()}.wav`, encodeWav(left, right, sampleRate) as BlobPart, 'audio/wav');
-      status.textContent = t('export.wavReady', { seconds: num(left.length / sampleRate, 1) });
-    } finally {
-      btn.disabled = false;
-    }
+  /** Render audio with progress in the status line, then hand over the file. */
+  const exportAudio = (
+    id: string,
+    build: (opts: RenderOptions) => Promise<{ name: string; data: Uint8Array; type: string; seconds: number }>,
+  ) =>
+    $(id).addEventListener('click', async () => {
+      const btn = $<HTMLButtonElement>(id);
+      const status = $('x-status');
+      btn.disabled = true;
+      try {
+        const { name, data, type, seconds } = await build({
+          loops: Number($<HTMLInputElement>('x-loops').value),
+          onProgress: (s) => (status.textContent = t('export.rendering', { seconds: num(s, 0) })),
+        });
+        download(name, data as BlobPart, type);
+        status.textContent = t('export.audioReady', { name, seconds: num(seconds, 1) });
+      } catch (err) {
+        status.textContent = (err as Error).message;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  exportAudio('x-wav', async (opts) => {
+    const { left, right, sampleRate } = await renderSong(structuredClone(song), opts);
+    const data = encodeWav(left, right, sampleRate);
+    return { name: `${fileBase()}.wav`, data, type: 'audio/wav', seconds: left.length / sampleRate };
+  });
+  exportAudio('x-flac', async (opts) => {
+    const { left, right, sampleRate } = await renderSong(structuredClone(song), opts);
+    const data = encodeFlac(left, right, sampleRate);
+    return { name: `${fileBase()}.flac`, data, type: 'audio/flac', seconds: left.length / sampleRate };
+  });
+  exportAudio('x-stems', async (opts) => {
+    const stems = await renderStems(song, opts);
+    const data = zip(
+      stems.map(({ left, right, sampleRate }, ch) => ({
+        name: `${fileBase()}_ch${ch + 1}_${CHANNEL_KINDS[ch]}.wav`,
+        data: encodeWav(left, right, sampleRate),
+      })),
+    );
+    const { left, sampleRate } = stems[0];
+    return { name: `${fileBase()}_stems.zip`, data, type: 'application/zip', seconds: left.length / sampleRate };
+  });
+  exportAudio('x-opus', async (opts) => {
+    if (!canEncode('audio')) throw new Error(t('export.unsupportedError'));
+    const { data, seconds } = await exportOpus(structuredClone(song), { loops: opts.loops ?? 1, onProgress: opts.onProgress });
+    // Firefox renames audio/ogg downloads to .ogx, so hand the file over untyped.
+    return { name: `${fileBase()}.opus`, data, type: 'application/octet-stream', seconds };
+  });
+  exportAudio('x-video', async (opts) => {
+    if (!canEncode('video')) throw new Error(t('export.unsupportedError'));
+    const colors = themeColors(getComputedStyle(document.documentElement));
+    const { data, seconds } = await exportVideo(structuredClone(song), {
+      loops: opts.loops ?? 1,
+      onProgress: opts.onProgress,
+      colors,
+    });
+    return { name: `${fileBase()}.webm`, data, type: 'video/webm', seconds };
   });
   $('x-vgm').addEventListener('click', () => {
     const vgm = encodeVgm(captureStream(structuredClone(song)), { title: song.title, author: song.author });

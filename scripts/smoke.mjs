@@ -12,8 +12,10 @@
  *   and the song survives a reload (localStorage);
  * - the song library saves (button and Ctrl+S), saves as, renames, duplicates, deletes and opens songs,
  *   keeps them across a reload (IndexedDB), and its ZIP backup imports again;
- * - every export (song JSON, WAV, VGM, GBS, ROM, GBDK zip) hands over a file with the right
+ * - every export (song JSON, WAV, FLAC, stems, VGM, GBS, ROM, XM, MOD, GBDK zip) hands over a file with the right
  *   header;
+ * - the Opus and video exports hand over Ogg Opus and WebM files (checked with ffprobe when installed),
+ *   or say that the browser lacks WebCodecs;
  * - the theme button cycles auto, light and dark;
  * - the About dialog shows version and links, its mini game runs, and its keys stay out of the tracker;
  * - German, Spanish and French browsers get their UI language, still without sideways scrolling;
@@ -24,7 +26,9 @@
  * so the check that the play cursor moves through the rows runs in Chromium only.
  * Screenshots go to the given folder.
  */
-import { mkdirSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { chromium, devices, firefox, webkit } from 'playwright';
 import { serveDist } from './serve-dist.mjs';
@@ -356,11 +360,60 @@ const NINTENDO_LOGO = Buffer.from('CEED6666CC0D000B03730083000C000D0008111F88890
 const exports = [
   ['f-save', /\.gbt\.json$/, (b) => typeof JSON.parse(b.toString('utf8')).patterns === 'object'],
   ['x-wav', /\.wav$/, (b) => b.subarray(0, 4).toString('latin1') === 'RIFF' && b.subarray(8, 12).toString('latin1') === 'WAVE' && b.length > 10000],
+  ['x-flac', /\.flac$/, (b) => b.subarray(0, 4).toString('latin1') === 'fLaC' && b.length > 5000],
+  ['x-stems', /_stems\.zip$/, (b) => b.subarray(0, 2).toString('latin1') === 'PK' && b.includes('_ch4_noise.wav')],
   ['x-vgm', /\.vgm$/, (b) => b.subarray(0, 4).toString('latin1') === 'Vgm '],
   ['x-gbs', /\.gbs$/, (b) => b.subarray(0, 3).toString('latin1') === 'GBS'],
   ['x-rom', /\.gbc?$/, (b) => b.subarray(0x104, 0x134).equals(NINTENDO_LOGO)],
+  ['x-xm', /\.xm$/, (b) => b.subarray(0, 17).toString('latin1') === 'Extended Module: '],
+  ['x-mod', /\.mod$/, (b) => b.subarray(1080, 1084).toString('latin1') === 'M.K.'],
   ['x-gbdk', /\.zip$/, (b) => b.subarray(0, 2).toString('latin1') === 'PK'],
 ];
+
+/** ffprobe's view of a file, or null without ffprobe. */
+function probe(bytes, name) {
+  try {
+    const file = join(mkdtempSync(join(tmpdir(), 'smoke-')), name);
+    writeFileSync(file, bytes);
+    return JSON.parse(execFileSync('ffprobe', ['-v', 'error', '-show_format', '-show_streams', '-of', 'json', file]));
+  } catch (e) {
+    if (e.code === 'ENOENT') return null;
+    throw e;
+  }
+}
+
+await check('Opus and video exports (WebCodecs) or a clear message without them', async () => {
+  const { context, page, errors } = await open(desktop);
+  try {
+    await page.locator('.tabs [data-tab="file"]').click();
+    const supported = await page.evaluate(() => typeof AudioEncoder !== 'undefined' && typeof VideoEncoder !== 'undefined');
+    if (!supported) {
+      assert(engine !== 'chromium', 'Chromium has no WebCodecs encoders');
+      await page.locator('#x-video').click();
+      await page.waitForFunction(() => /WebCodecs/.test(document.querySelector('#x-status')?.textContent ?? ''));
+      console.log(`skip ${engine}: no WebCodecs encoders, the status line says so`);
+      return;
+    }
+    const opus = await download(page, 'x-opus', 120000);
+    assert(/\.opus$/.test(opus.name), `x-opus: file is called ${opus.name}`);
+    assert(opus.bytes.subarray(0, 4).toString('latin1') === 'OggS' && opus.bytes.subarray(28, 36).toString('latin1') === 'OpusHead', 'x-opus: not Ogg Opus');
+    const video = await download(page, 'x-video', 300000);
+    assert(/\.webm$/.test(video.name), `x-video: file is called ${video.name}`);
+    assert(video.bytes.readUInt32BE(0) === 0x1a45dfa3, 'x-video: not an EBML/WebM file');
+    const info = probe(video.bytes, video.name);
+    if (info) {
+      const codecs = info.streams.map((st) => st.codec_name).join(',');
+      assert(/^(vp9|vp8),opus$/.test(codecs), `x-video: streams are ${codecs}`);
+      assert(info.streams[0].width === 1280 && info.streams[0].height === 720, 'x-video: not 1280x720');
+      assert(Number(info.format.duration) > 5, `x-video: lasts ${info.format.duration} s`);
+      const audio = probe(opus.bytes, opus.name);
+      assert(Math.abs(Number(audio.format.duration) - Number(info.format.duration)) < 0.2, 'Opus and video lengths differ');
+    }
+    assert(errors.length === 0, `errors: ${errors.join(' | ')}`);
+  } finally {
+    await context.close();
+  }
+});
 
 await check('every export hands over a valid file', async () => {
   const { context, page, errors } = await open(desktop);

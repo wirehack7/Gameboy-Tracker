@@ -4,9 +4,9 @@ A tracker for Game Boy music that runs in the browser — on desktop with a keyb
 Sound comes from a cycle-accurate emulation of the Game Boy APU (DMG and Game Boy Color), not from imitation
 oscillators. What the tracker plays are the same register writes a sound driver makes on real hardware.
 
-**Live:** https://wirehack7.github.io/Gameboy-Tracker/
+**Live:** https://gb.chiptrackr.com/
 
-**Manual:** [docs/MANUAL.md](docs/MANUAL.md), also on the site: https://wirehack7.github.io/Gameboy-Tracker/manual.html
+**Manual:** [docs/MANUAL.md](docs/MANUAL.md), also on the site: https://gb.chiptrackr.com/manual.html
 
 What comes next is in the [roadmap](ROADMAP.md).
 
@@ -19,7 +19,7 @@ What comes next is in the [roadmap](ROADMAP.md).
 - DMG or GBC mode per song
 - Oscilloscope per channel, click to mute
 - Song library in the browser (save, open, rename, duplicate, delete), JSON import/export, ZIP backup of the library, automatic working-copy backup
-- Exports: playable Game Boy ROM (.gb/.gbc), GBS, XM, MOD, VGM, WAV, and a GBDK-2020 project (C array + tiny driver + Makefile)
+- Exports: playable Game Boy ROM (.gb/.gbc), GBS, XM, MOD, VGM, WAV, FLAC, Opus, per-channel stems, a WebM video with scopes and the scrolling pattern, and a GBDK-2020 project (C array + tiny driver + Makefile)
 - Full-window tracker layout in Game Boy colours (off-white, A/B-button red) with colour-coded pattern columns, light and dark mode
 - Responsive: desktop with side lists, tablet two-column, phone with views and an on-screen keypad
 - On-screen piano (mouse, touch, glissando) and Web MIDI input from any connected keyboard
@@ -45,6 +45,9 @@ the tests check.
 - **GBS:** Game Boy Sound System v1 for music players (VBlank rate). Same driver as the ROM.
 - **VGM:** VGM 1.71 with the Game Boy DMG chip, including loop point and GD3 tags.
 - **WAV:** 16-bit stereo, rendered by the emulator.
+- **FLAC:** the same audio, lossless (own encoder, checked bit for bit against ffmpeg).
+- **Stems:** one WAV per channel in a ZIP.
+- **Opus / video:** Ogg Opus audio and a 1280×720 WebM video (scopes and pattern), encoded with WebCodecs and muxed by our own Ogg and WebM writers (checked against ffmpeg).
 
 Stream format used by the C driver:
 

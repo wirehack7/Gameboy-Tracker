@@ -19,6 +19,8 @@ What comes next is in the [roadmap](ROADMAP.md).
 - Exports: playable Game Boy ROM (.gb/.gbc), GBS, VGM, WAV, and a GBDK-2020 project (C array + tiny driver + Makefile)
 - Full-window tracker layout in Game Boy colours (off-white, A/B-button red) with colour-coded pattern columns, light and dark mode
 - Responsive: desktop with side lists, tablet two-column, phone with views and an on-screen keypad
+- On-screen piano (mouse, touch, glissando) and Web MIDI input from any connected keyboard
+- Master volume for playback
 
 ## Exports
 

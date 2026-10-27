@@ -4,27 +4,27 @@ Web-basierter Game-Boy-Tracker für Desktop- und Mobil-Browser. Jede Phase lande
 und wird nach dem Merge automatisch auf GitHub Pages veröffentlicht. Erledigte Punkte werden hier abgehakt.
 
 ## Phase 1 – Fundament
-- [ ] Projektgerüst (Vite + TypeScript, Vitest), CI für Tests und Build
-- [ ] DMG-APU-Emulation, zyklusgenau und registerbasiert
-  - [ ] Pulse 1 mit Sweep (inkl. Negate-Quirk, Overflow beim Trigger)
-  - [ ] Pulse 2
-  - [ ] Wave-Kanal (Wave-RAM, Lautstärke-Shift, Zugriff während der Wiedergabe)
-  - [ ] Noise-Kanal (15/7-Bit-LFSR, Teiler/Shift)
-  - [ ] Frame Sequencer, Length Counter, Envelope, DACs, NR50/NR51/NR52, Power-Verhalten
-  - [ ] Register-Lesemasken, High-Pass-Filter wie auf der Hardware
-- [ ] Hardware-Tests nach dem Vorbild von Blargg `dmg_sound` (01–12) und Pan Docs
-- [ ] Song-Modell (Patterns, Order-Liste, Instrumente, Wellenformen) und Player mit Effekten
-- [ ] Pattern-Editor im Game-Boy-Look (Off-White, rote Knöpfe) mit Dark Mode
-- [ ] Bedienung per Tastatur und Touch (Bildschirm-Keypad fürs Handy)
-- [ ] Wiedergabe per AudioWorklet, Oszilloskope je Kanal
-- [ ] Speichern/Laden (Browser-Speicher und JSON-Datei)
-- [ ] WAV-Export
-- [ ] Deployment auf GitHub Pages
+- [x] Projektgerüst (Vite + TypeScript, Vitest), CI für Tests und Build
+- [x] DMG-APU-Emulation, zyklusgenau und registerbasiert
+  - [x] Pulse 1 mit Sweep (inkl. Negate-Quirk, Overflow beim Trigger)
+  - [x] Pulse 2
+  - [x] Wave-Kanal (Wave-RAM, Lautstärke-Shift, Zugriff während der Wiedergabe)
+  - [x] Noise-Kanal (15/7-Bit-LFSR, Teiler/Shift)
+  - [x] Frame Sequencer, Length Counter, Envelope, DACs, NR50/NR51/NR52, Power-Verhalten
+  - [x] Register-Lesemasken, High-Pass-Filter wie auf der Hardware
+- [x] Hardware-Tests nach dem Vorbild von Blargg `dmg_sound` (01–12) und Pan Docs
+- [x] Song-Modell (Patterns, Order-Liste, Instrumente, Wellenformen) und Player mit Effekten
+- [x] Pattern-Editor im Game-Boy-Look (Off-White, rote Knöpfe) mit Dark Mode
+- [x] Bedienung per Tastatur und Touch (Bildschirm-Keypad fürs Handy)
+- [x] Wiedergabe per AudioWorklet, Oszilloskope je Kanal
+- [x] Speichern/Laden (Browser-Speicher und JSON-Datei)
+- [x] WAV-Export
+- [x] Deployment auf GitHub Pages
 
 ## Phase 2 – Game Boy Color
-- [ ] CGB-Modus der APU (Unterschiede bei Length Counter/Power, Wave-RAM, PCM12/PCM34, Filter)
-- [ ] Tests für die CGB-Unterschiede (Vorbild Blargg `cgb_sound`)
-- [ ] Umschaltung DMG/CGB pro Song
+- [x] CGB-Modus der APU (Unterschiede bei Length Counter/Power, Wave-RAM, PCM12/PCM34, Filter)
+- [ ] Tests für die CGB-Unterschiede (Vorbild Blargg `cgb_sound`, Grundlagen schon in Phase 1)
+- [x] Umschaltung DMG/CGB pro Song
 
 ## Phase 3 – Export für Entwickler
 - [ ] C-Arrays für GBDK (Register-Stream + kleiner Player in C)

@@ -1,0 +1,821 @@
+:root {
+  color-scheme: light;
+  --case: #d6d2c8;
+  --case-hi: #e6e3dc;
+  --case-lo: #bdb8ad;
+  --ink: #2a2a33;
+  --ink-soft: #66636d;
+  --bezel: #5b5d6b;
+  --bezel-ink: #d0cede;
+  --stripe-a: #8e2e5c;
+  --stripe-b: #2e3080;
+  --lcd-bg: #b4c27c;
+  --lcd-mid: #95a65f;
+  --lcd-dim: #5f7040;
+  --lcd-ink: #1f2b17;
+  --lcd-hot: #2f3d1f;
+  --btn: #a3224f;
+  --btn-hi: #bd3968;
+  --btn-ink: #f6ecf0;
+  --pill: #8b8790;
+  --pill-ink: #f2f0f4;
+  --sharp: #2a2a33;
+  --sharp-ink: #e6e3dc;
+  --dpad: #2b2b2f;
+  --logo: #2b2f86;
+  --field: #f1eee8;
+  --focus: #2b2f86;
+  --mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;
+  --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --case: #26262a;
+    --case-hi: #313136;
+    --case-lo: #18181b;
+    --ink: #e7e3da;
+    --ink-soft: #a5a2ab;
+    --bezel: #121215;
+    --bezel-ink: #8d8b99;
+    --lcd-bg: #18230f;
+    --lcd-mid: #2c3f1d;
+    --lcd-dim: #6b8a45;
+    --lcd-ink: #c5e08a;
+    --lcd-hot: #e6f7b5;
+    --btn: #b8346a;
+    --btn-hi: #d24a82;
+    --pill: #54515a;
+    --logo: #a7acff;
+    --field: #1c1c1f;
+    --focus: #a7acff;
+    --sharp: #0d0d0f;
+    --sharp-ink: #c9c6cf;
+    --dpad: #3b3b42;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --case: #26262a;
+  --case-hi: #313136;
+  --case-lo: #18181b;
+  --ink: #e7e3da;
+  --ink-soft: #a5a2ab;
+  --bezel: #121215;
+  --bezel-ink: #8d8b99;
+  --lcd-bg: #18230f;
+  --lcd-mid: #2c3f1d;
+  --lcd-dim: #6b8a45;
+  --lcd-ink: #c5e08a;
+  --lcd-hot: #e6f7b5;
+  --btn: #b8346a;
+  --btn-hi: #d24a82;
+  --pill: #54515a;
+  --logo: #a7acff;
+  --field: #1c1c1f;
+  --focus: #a7acff;
+  --sharp: #0d0d0f;
+  --sharp-ink: #c9c6cf;
+  --dpad: #3b3b42;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--case-lo);
+  color: var(--ink);
+  font-family: var(--sans);
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  min-height: 100vh;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.gb {
+  max-width: 1280px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background: linear-gradient(180deg, var(--case-hi), var(--case) 120px);
+  padding: 12px 16px 32px;
+}
+
+@media (min-width: 900px) {
+  .gb {
+    margin: 16px auto;
+    min-height: auto;
+    border-radius: 12px 12px 48px 12px;
+    box-shadow: 0 2px 0 var(--case-hi) inset, 0 12px 30px rgb(0 0 0 / 0.25);
+  }
+}
+
+/* ---------------------------------------------------------------- top bar */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 2px solid var(--case-lo);
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+
+.logo {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.02em;
+  color: var(--logo);
+  flex: 1;
+  white-space: nowrap;
+}
+
+.logo small {
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  margin-left: 6px;
+  color: var(--ink-soft);
+}
+
+.icon-btn {
+  border: 0;
+  background: var(--case-lo);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+/* ---------------------------------------------------------------- layout */
+
+.layout {
+  display: grid;
+  gap: 16px;
+}
+
+@media (min-width: 1000px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr) 360px;
+    align-items: start;
+  }
+}
+
+/* ---------------------------------------------------------------- screen */
+
+.bezel {
+  background: var(--bezel);
+  border-radius: 10px 10px 36px 10px;
+  padding: 10px 14px 18px;
+}
+
+.bezel-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--bezel-ink);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  margin-bottom: 8px;
+  white-space: nowrap;
+}
+
+.bezel-top .stripe {
+  flex: 1;
+  height: 6px;
+  border-top: 2px solid var(--stripe-a);
+  border-bottom: 2px solid var(--stripe-b);
+}
+
+.screen-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.battery {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: var(--bezel-ink);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  padding-top: 40px;
+}
+
+@media (min-width: 700px) {
+  .battery {
+    display: flex;
+  }
+}
+
+.led {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #4a1d1d;
+}
+
+.led.on {
+  background: #ff3b3b;
+  box-shadow: 0 0 6px #ff3b3b;
+}
+
+.lcd {
+  flex: 1;
+  min-width: 0;
+  background: var(--lcd-bg);
+  color: var(--lcd-ink);
+  border-radius: 3px;
+  padding: 6px;
+  box-shadow: inset 0 0 0 2px rgb(0 0 0 / 0.15);
+  font-family: var(--mono);
+}
+
+.lcd-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.lcd-head .nav {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.lcd-head button {
+  border: 1px solid var(--lcd-dim);
+  background: transparent;
+  color: var(--lcd-ink);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.scopes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.scope {
+  position: relative;
+  border: 1px solid var(--lcd-dim);
+  height: 44px;
+}
+
+.scope canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.scope button {
+  position: absolute;
+  inset: 0 auto auto 0;
+  border: 0;
+  background: transparent;
+  color: var(--lcd-ink);
+  font: 700 9px var(--mono);
+  padding: 2px 3px;
+  cursor: pointer;
+}
+
+.scope.muted {
+  opacity: 0.45;
+}
+
+.scope.muted button::after {
+  content: ' MUTE';
+}
+
+/* ---------------------------------------------------------------- pattern */
+
+.pattern {
+  font-size: clamp(10px, 2.9vw, 14px);
+  line-height: 1.35;
+  height: min(52vh, 560px);
+  overflow: auto;
+  white-space: pre;
+  outline: none;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--lcd-dim) transparent;
+  touch-action: pan-y pan-x;
+}
+
+.pattern:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--lcd-dim);
+}
+
+.prow {
+  display: flex;
+  width: max-content;
+  min-width: 100%;
+}
+
+.prow.beat {
+  background: rgb(0 0 0 / 0.06);
+}
+
+.prow.cursor-row {
+  background: var(--lcd-mid);
+}
+
+.prow.play-row {
+  box-shadow: inset 3px 0 0 var(--lcd-ink);
+  background: var(--lcd-dim);
+  color: var(--lcd-bg);
+}
+
+.prow .num {
+  width: 3ch;
+  color: var(--lcd-dim);
+  user-select: none;
+}
+
+.prow.play-row .num {
+  color: var(--lcd-bg);
+}
+
+.cell,
+.chan-head .cell {
+  display: inline-block;
+  width: 10.6ch;
+  padding: 0 0.6ch 0 0.4ch;
+  border-left: 1px solid var(--lcd-dim);
+}
+
+.cell span {
+  cursor: pointer;
+}
+
+.cell .f0 {
+  margin-right: 0.5ch;
+}
+
+.cell .f2 {
+  margin-right: 0.5ch;
+}
+
+.cell .empty {
+  opacity: 0.45;
+}
+
+.cell .cursor {
+  background: var(--lcd-ink);
+  color: var(--lcd-bg);
+  opacity: 1;
+}
+
+.chan-head {
+  display: flex;
+  width: max-content;
+  min-width: 100%;
+  font-size: clamp(10px, 2.9vw, 14px);
+  font-weight: 700;
+  border-bottom: 1px solid var(--lcd-dim);
+  white-space: pre;
+  overflow: hidden;
+}
+
+.chan-head .num {
+  width: 3ch;
+}
+
+/* ---------------------------------------------------------------- controls */
+
+.controls {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 6px 8px;
+}
+
+.dpad {
+  display: grid;
+  grid-template-columns: repeat(3, 34px);
+  grid-template-rows: repeat(3, 34px);
+}
+
+.dpad button {
+  border: 0;
+  background: var(--dpad);
+  color: #8f8d96;
+  font-size: 13px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.dpad button:active {
+  background: #18181b;
+}
+
+.dpad .up {
+  grid-area: 1 / 2;
+  border-radius: 4px 4px 0 0;
+}
+
+.dpad .left {
+  grid-area: 2 / 1;
+  border-radius: 4px 0 0 4px;
+}
+
+.dpad .mid {
+  grid-area: 2 / 2;
+  background: var(--dpad);
+}
+
+.dpad .right {
+  grid-area: 2 / 3;
+  border-radius: 0 4px 4px 0;
+}
+
+.dpad .down {
+  grid-area: 3 / 2;
+  border-radius: 0 0 4px 4px;
+}
+
+.pills {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  align-self: end;
+}
+
+.pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--logo);
+}
+
+.pill button {
+  width: 46px;
+  height: 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--pill);
+  transform: rotate(-25deg);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.ab {
+  display: flex;
+  gap: 12px;
+  transform: rotate(-25deg);
+  padding-right: 4px;
+}
+
+.round {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--logo);
+}
+
+.round button {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 0;
+  background: radial-gradient(circle at 35% 30%, var(--btn-hi), var(--btn) 60%);
+  box-shadow: 0 3px 0 rgb(0 0 0 / 0.25);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.round button:active,
+.pill button:active {
+  transform: translateY(2px);
+}
+
+.round:last-child {
+  margin-top: -18px;
+}
+
+/* ---------------------------------------------------------------- keypad */
+
+.keypad {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.keypad .row {
+  display: flex;
+  gap: 4px;
+}
+
+.key {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--case-hi);
+  box-shadow: 0 2px 0 var(--case-lo);
+  font: 700 13px var(--mono);
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.key.sharp {
+  background: var(--sharp);
+  color: var(--sharp-ink);
+}
+
+.key.action {
+  background: var(--pill);
+  color: var(--pill-ink);
+}
+
+.key.red {
+  background: var(--btn);
+  color: var(--btn-ink);
+}
+
+.key:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+/* ---------------------------------------------------------------- panels */
+
+.panels {
+  background: var(--case-hi);
+  border-radius: 10px;
+  padding: 12px;
+  min-width: 0;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.tabs button {
+  flex: 1;
+  border: 0;
+  border-radius: 999px;
+  padding: 7px 4px;
+  background: var(--case-lo);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.tabs button[aria-selected='true'] {
+  background: var(--btn);
+  color: var(--btn-ink);
+}
+
+.panel h2 {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  margin: 14px 0 8px;
+  color: var(--ink-soft);
+}
+
+.panel h2:first-child {
+  margin-top: 0;
+}
+
+.form {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 10px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.form label {
+  color: var(--ink-soft);
+}
+
+.form input[type='text'],
+.form input[type='number'],
+.form select,
+.panel textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--case-lo);
+  background: var(--field);
+}
+
+.form input[type='range'] {
+  width: 100%;
+  accent-color: var(--btn);
+}
+
+.form output {
+  font-family: var(--mono);
+  font-size: 12px;
+  margin-left: 6px;
+}
+
+.range {
+  display: flex;
+  align-items: center;
+}
+
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.btn {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: var(--pill);
+  color: var(--pill-ink);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn.primary {
+  background: var(--btn);
+  color: var(--btn-ink);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.seg {
+  display: inline-flex;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid var(--case-lo);
+}
+
+.seg button {
+  border: 0;
+  background: transparent;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.seg button[aria-pressed='true'] {
+  background: var(--btn);
+  color: var(--btn-ink);
+}
+
+.inst-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+}
+
+.inst-grid button {
+  border: 0;
+  border-radius: 4px;
+  padding: 6px 0;
+  background: var(--case-lo);
+  font: 700 12px var(--mono);
+  cursor: pointer;
+}
+
+.inst-grid button[aria-pressed='true'] {
+  background: var(--btn);
+  color: var(--btn-ink);
+}
+
+.wave-canvas {
+  width: 100%;
+  aspect-ratio: 2 / 1;
+  background: var(--lcd-bg);
+  border-radius: 4px;
+  touch-action: none;
+  cursor: crosshair;
+  display: block;
+}
+
+.order-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-family: var(--mono);
+}
+
+.order-list button {
+  border: 1px solid var(--case-lo);
+  background: var(--field);
+  border-radius: 4px;
+  padding: 4px 6px;
+  font: 700 12px var(--mono);
+  cursor: pointer;
+}
+
+.order-list button[aria-current='true'] {
+  background: var(--btn);
+  color: var(--btn-ink);
+  border-color: var(--btn);
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+.help-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.help-table td {
+  padding: 3px 4px;
+  border-bottom: 1px solid var(--case-lo);
+  vertical-align: top;
+}
+
+.help-table td:first-child {
+  font-family: var(--mono);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--case);
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+  max-width: calc(100vw - 32px);
+}
+
+.toast.show {
+  opacity: 1;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
